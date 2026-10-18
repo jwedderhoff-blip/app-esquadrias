@@ -247,13 +247,22 @@ export default function ProjetoDetalhe() {
 
   async function handleDelete() {
     setDeleting(true)
-    await supabase.from('activity_log').insert({
-      project_id: id,
-      usuario_id: session.user.id,
-      acao: 'projeto_excluido',
-      detalhe: `Projeto "${project.titulo}" excluído por ${profile?.nome ?? session.user.email}`,
+    const { data: { session: s } } = await supabase.auth.getSession()
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-project`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${s?.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ project_id: id }),
     })
-    await supabase.from('projects').delete().eq('id', id)
+    const result = await res.json()
+    if (!res.ok) {
+      toast.error('Erro ao excluir: ' + (result.error || res.statusText))
+      setDeleting(false)
+      return
+    }
     toast.success('Projeto excluído.')
     navigate('/')
   }
@@ -481,6 +490,7 @@ export default function ProjetoDetalhe() {
           etapa={project.etapa_atual}
           items={checklistItems}
           onUpdate={fetchChecklist}
+          project={project}
         />
       )}
       {tab === 'documentos' && (

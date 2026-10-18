@@ -1,12 +1,28 @@
+// Campos que podem ser copiados do projeto para o item de checklist
+export const CHECKLIST_COPY_FROM_PROJECT = {
+  'Dados complementares do cliente e endereço da obra': [
+    { key: 'nome_cliente', projectField: 'cliente' },
+    { key: 'cnpj_cpf', projectField: 'cliente_cpf_cnpj' },
+    { key: 'contato', projectField: 'cliente_fone' },
+    { key: 'email', projectField: 'cliente_email' },
+  ],
+}
+
 export const CHECKLIST_FIELDS = {
-  'Identificação do cliente (nome, CNPJ/CPF, contato)': [
+  'Dados complementares do cliente e endereço da obra': [
     { key: 'nome_cliente', label: 'Nome do cliente', type: 'text', required: true },
-    { key: 'cnpj_cpf', label: 'CNPJ / CPF', type: 'text', required: true },
-    { key: 'contato', label: 'Contato (telefone ou e-mail)', type: 'text', required: false },
+    { key: 'cnpj_cpf', label: 'CNPJ / CPF', type: 'text', required: false },
+    { key: 'contato', label: 'Telefone / WhatsApp', type: 'text', required: false },
+    { key: 'email', label: 'E-mail', type: 'text', required: false },
+    { key: 'logradouro', label: 'Endereço da obra (logradouro)', type: 'text', required: false },
+    { key: 'numero_end', label: 'Número', type: 'text', required: false },
+    { key: 'complemento', label: 'Complemento', type: 'text', required: false },
+    { key: 'bairro', label: 'Bairro', type: 'text', required: false },
+    { key: 'cidade_obra', label: 'Cidade', type: 'text', required: false },
+    { key: 'estado_obra', label: 'Estado', type: 'text', required: false },
+    { key: 'cep', label: 'CEP', type: 'text', required: false },
   ],
-  'Descrição do produto solicitado': [
-    { key: 'descricao', label: 'Descrição do produto', type: 'textarea', required: true },
-  ],
+  // 'Descrição do produto solicitado' → requer_documento=true, usa ModalAnexo (upload do orçamento aprovado)
   'Prazo solicitado pelo cliente': [
     { key: 'prazo', label: 'Prazo solicitado', type: 'date', required: true },
   ],

@@ -12,7 +12,7 @@ import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { ETAPA_LABEL } from '../../lib/constants'
-import { CHECKLIST_FIELDS } from '../../lib/checklistFields'
+import { CHECKLIST_FIELDS, CHECKLIST_COPY_FROM_PROJECT } from '../../lib/checklistFields'
 import toast from 'react-hot-toast'
 
 // ── Modal de upload de documento obrigatório ──────────────────
@@ -134,9 +134,10 @@ function Field({ field, value, onChange, users }) {
 }
 
 // ── Modal de formulário de dados ──────────────────────────────
-function ModalDados({ item, onClose, onDone }) {
+function ModalDados({ item, project, onClose, onDone }) {
   const { session } = useAuth()
   const fields = CHECKLIST_FIELDS[item.descricao] || []
+  const copyMap = CHECKLIST_COPY_FROM_PROJECT[item.descricao]
   const [values, setValues] = useState(item.dados || {})
   const [users, setUsers] = useState([])
   const [saving, setSaving] = useState(false)
@@ -151,6 +152,17 @@ function ModalDados({ item, onClose, onDone }) {
 
   function set(key, val) {
     setValues((prev) => ({ ...prev, [key]: val }))
+  }
+
+  function copiarDoCadastro() {
+    if (!copyMap || !project) return
+    setValues((prev) => {
+      const next = { ...prev }
+      for (const { key, projectField } of copyMap) {
+        if (project[projectField]) next[key] = project[projectField]
+      }
+      return next
+    })
   }
 
   async function handleSubmit(e) {
@@ -181,6 +193,21 @@ function ModalDados({ item, onClose, onDone }) {
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
+
+        {copyMap && project && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between">
+            <p className="text-xs text-blue-700">
+              Copiar nome, CPF/CNPJ e contato do cadastro inicial do projeto
+            </p>
+            <button
+              type="button"
+              onClick={copiarDoCadastro}
+              className="ml-3 flex-shrink-0 text-xs font-semibold text-blue-600 hover:text-blue-800 border border-blue-300 rounded-md px-2.5 py-1 hover:bg-blue-100 transition"
+            >
+              Copiar do cadastro
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {fields.map((field) => (
@@ -249,7 +276,7 @@ function DadosResumo({ item, users }) {
 }
 
 // ── Componente principal ──────────────────────────────────────
-export default function ChecklistTab({ projectId, etapa, items, onUpdate }) {
+export default function ChecklistTab({ projectId, etapa, items, onUpdate, project }) {
   const { session } = useAuth()
   const [updating, setUpdating] = useState(null)
   const [anexoModal, setAnexoModal] = useState(null)
@@ -399,7 +426,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate }) {
           onClose={() => setAnexoModal(null)} onDone={onUpdate} />
       )}
       {dadosModal && (
-        <ModalDados item={dadosModal}
+        <ModalDados item={dadosModal} project={project}
           onClose={() => setDadosModal(null)} onDone={onUpdate} />
       )}
     </div>
