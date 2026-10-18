@@ -293,7 +293,7 @@ export default function ProjetoDetalhe() {
     // Concluir etapa atual em project_stages
     const { data: stages } = await supabase
       .from('project_stages')
-      .select('*')
+      .select('id')
       .eq('project_id', id)
       .eq('etapa', project.etapa_atual)
       .is('concluida_em', null)
@@ -305,18 +305,21 @@ export default function ProjetoDetalhe() {
     }
 
     // Atualizar etapa do projeto
-    await supabase
+    const { error: updateErr } = await supabase
       .from('projects')
       .update({ etapa_atual: nextEtapa, atualizado_em: now })
       .eq('id', id)
 
-    // Iniciar nova etapa em project_stages
-    await supabase.from('project_stages').insert({
-      project_id: id,
-      etapa: nextEtapa,
-    })
+    if (updateErr) {
+      toast.error('Erro ao avançar etapa: ' + updateErr.message)
+      setAdvancing(false)
+      return
+    }
 
-    // Popular checklist da nova etapa
+    // Iniciar nova etapa em project_stages
+    await supabase.from('project_stages').insert({ project_id: id, etapa: nextEtapa })
+
+    // Popular checklist da nova etapa (ignorar duplicatas)
     const { data: templates } = await supabase
       .from('checklist_templates')
       .select('*')
@@ -324,14 +327,26 @@ export default function ProjetoDetalhe() {
       .order('ordem')
 
     if (templates?.length) {
-      await supabase.from('checklist_items').insert(
-        templates.map((t) => ({
+      // Buscar itens já existentes para evitar duplicatas
+      const { data: existing } = await supabase
+        .from('checklist_items')
+        .select('descricao')
+        .eq('project_id', id)
+        .eq('etapa', nextEtapa)
+
+      const existingDescs = new Set((existing || []).map((i) => i.descricao))
+      const toInsert = templates
+        .filter((t) => !existingDescs.has(t.descricao))
+        .map((t) => ({
           project_id: id,
           etapa: nextEtapa,
           descricao: t.descricao,
           requer_documento: t.requer_documento ?? false,
         }))
-      )
+
+      if (toInsert.length) {
+        await supabase.from('checklist_items').insert(toInsert)
+      }
     }
 
     // Log
@@ -343,8 +358,8 @@ export default function ProjetoDetalhe() {
     })
 
     toast.success(`Avançado para: ${ETAPAS[currentIdx + 1].label}`)
-    await fetchProject()
-    setAdvancing(false)
+    // Forçar reload completo para garantir que todos os estados atualizem
+    navigate(0)
   }
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
