@@ -53,6 +53,7 @@ export default function NovoProjeto() {
           project_id: project.id,
           etapa: 'pedido',
           descricao: t.descricao,
+          requer_documento: t.requer_documento ?? false,
         }))
       )
     }

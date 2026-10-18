@@ -120,6 +120,7 @@ export default function ProjetoDetalhe() {
           project_id: id,
           etapa: nextEtapa,
           descricao: t.descricao,
+          requer_documento: t.requer_documento ?? false,
         }))
       )
     }
