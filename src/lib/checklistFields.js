@@ -66,4 +66,13 @@ export const CHECKLIST_FIELDS = {
   'Projeto marcado como encerrado': [
     { key: 'observacoes', label: 'Observações finais', type: 'textarea', required: false },
   ],
+  'Satisfação do cliente registrada': [
+    { key: 'satisfacao', label: 'Nível de satisfação', type: 'select', required: true,
+      options: ['Muito satisfeito', 'Satisfeito', 'Parcialmente satisfeito', 'Insatisfeito'] },
+    { key: 'observacoes', label: 'Comentários do cliente', type: 'textarea', required: false },
+  ],
+  'Prazo de garantia registrado': [
+    { key: 'prazo_garantia', label: 'Validade da garantia', type: 'date', required: true },
+    { key: 'observacoes', label: 'Condições da garantia', type: 'textarea', required: false },
+  ],
 }
