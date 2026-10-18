@@ -30,8 +30,8 @@ export default function Layout({ children }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="px-6 py-5 border-b border-gray-200">
-        <span className="text-xl font-bold text-blue-600 tracking-tight">Opendoor</span>
-        <p className="text-xs text-gray-500 mt-0.5">Controle de Esquadrias</p>
+        <span className="text-xl font-bold text-blue-600 tracking-tight">App Esquadrias</span>
+        <p className="text-xs text-gray-500 mt-0.5">Controle de Projetos</p>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {allowed.map(({ to, label, icon: Icon }) => {
@@ -97,7 +97,7 @@ export default function Layout({ children }) {
           <button onClick={() => setSidebarOpen(true)} className="text-gray-600">
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <span className="font-bold text-blue-600">Opendoor</span>
+          <span className="font-bold text-blue-600">App Esquadrias</span>
           <NotificationBell />
         </header>
 

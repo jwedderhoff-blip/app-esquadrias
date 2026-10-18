@@ -26,8 +26,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-600">Opendoor</h1>
-          <p className="text-gray-500 mt-1 text-sm">Controle de Esquadrias</p>
+          <h1 className="text-3xl font-bold text-blue-600">App Esquadrias</h1>
+          <p className="text-gray-500 mt-1 text-sm">Controle de Projetos</p>
         </div>
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-5">
           <div>

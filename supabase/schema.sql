@@ -1,5 +1,5 @@
 -- ============================================================
--- Opendoor — Schema completo
+-- App Esquadrias — Schema completo
 -- ============================================================
 
 create extension if not exists "uuid-ossp";
