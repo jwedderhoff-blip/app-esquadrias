@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 export default function NovoProjeto() {
   const { session, profile } = useAuth()
   const navigate = useNavigate()
+  const [numeroPedido, setNumeroPedido] = useState('')
   const [titulo, setTitulo] = useState('')
   const [cliente, setCliente] = useState('')
   const [responsavel, setResponsavel] = useState('')
@@ -30,7 +31,7 @@ export default function NovoProjeto() {
     // Criar projeto
     const { data: project, error } = await supabase
       .from('projects')
-      .insert({ titulo, cliente, criado_por: responsavel || session.user.id, etapa_atual: 'pedido', company_id: profile?.company_id })
+      .insert({ numero_pedido: numeroPedido || null, titulo, cliente, criado_por: responsavel || session.user.id, etapa_atual: 'pedido', company_id: profile?.company_id })
       .select()
       .single()
 
@@ -89,6 +90,15 @@ export default function NovoProjeto() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Novo Projeto</h1>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Número do pedido / contrato</label>
+          <input
+            value={numeroPedido}
+            onChange={(e) => setNumeroPedido(e.target.value)}
+            placeholder="Ex: PED-2024-001"
+            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+          />
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Título do projeto *</label>
           <input
