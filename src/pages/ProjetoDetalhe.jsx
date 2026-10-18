@@ -18,9 +18,11 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
     numero_pedido: project.numero_pedido ?? '',
     titulo: project.titulo ?? '',
     cliente: project.cliente ?? '',
+    cliente_cpf_cnpj: project.cliente_cpf_cnpj ?? '',
     cliente_fone: project.cliente_fone ?? '',
     cliente_email: project.cliente_email ?? '',
     criado_por: project.criado_por ?? '',
+    drive_pasta_url: project.drive_pasta_url ?? '',
   })
   const [confirmando, setConfirmando] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -31,8 +33,9 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
     const labels = {
       numero_orcamento: 'Nº orçamento', numero_pedido: 'Nº pedido',
       titulo: 'Título', cliente: 'Cliente',
+      cliente_cpf_cnpj: 'CPF/CNPJ',
       cliente_fone: 'Telefone', cliente_email: 'Email cliente',
-      criado_por: 'Responsável',
+      criado_por: 'Responsável', drive_pasta_url: 'Pasta Drive',
     }
     return Object.entries(form)
       .filter(([k, v]) => String(v ?? '') !== String(project[k] ?? ''))
@@ -95,9 +98,14 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
               <input value={form.cliente} onChange={set('cliente')} required
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">CPF / CNPJ</label>
+              <input value={form.cliente_cpf_cnpj} onChange={set('cliente_cpf_cnpj')} placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Telefone</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Telefone / WhatsApp</label>
                 <input type="tel" value={form.cliente_fone} onChange={set('cliente_fone')} placeholder="(11) 99999-9999"
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
@@ -106,6 +114,13 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
                 <input type="email" value={form.cliente_email} onChange={set('cliente_email')}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Pasta no Google Drive (URL)</label>
+              <input type="url" value={form.drive_pasta_url} onChange={set('drive_pasta_url')}
+                placeholder="https://drive.google.com/drive/folders/..."
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 mt-0.5">Pasta específica deste projeto no Drive da empresa.</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Responsável</label>
@@ -361,6 +376,9 @@ export default function ProjetoDetalhe() {
             <h1 className="text-xl font-bold text-gray-900">{project.titulo}</h1>
             <p className="text-sm text-gray-700 mt-0.5 font-medium">{project.cliente}</p>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
+              {project.cliente_cpf_cnpj && (
+                <span className="text-xs text-gray-500 font-mono">{project.cliente_cpf_cnpj}</span>
+              )}
               {project.cliente_fone && (
                 <a href={`https://wa.me/55${project.cliente_fone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
                   className="text-xs text-green-600 hover:underline">
@@ -371,6 +389,12 @@ export default function ProjetoDetalhe() {
                 <a href={`mailto:${project.cliente_email}`}
                   className="text-xs text-blue-600 hover:underline">
                   ✉ {project.cliente_email}
+                </a>
+              )}
+              {project.drive_pasta_url && (
+                <a href={project.drive_pasta_url} target="_blank" rel="noreferrer"
+                  className="text-xs text-gray-600 hover:text-blue-600 hover:underline font-medium">
+                  📁 Pasta Drive
                 </a>
               )}
             </div>
