@@ -268,17 +268,12 @@ export default function ProjetoDetalhe() {
   }
 
   async function handleAdvance() {
-    const allDone = checklistItems.length > 0 && checklistItems.every((i) => i.concluido)
-    if (!allDone) {
-      toast.error('Conclua todos os itens do checklist antes de avançar.')
-      // Notificação documento_pendente
-      await supabase.from('notifications').insert({
-        usuario_id: session.user.id,
-        project_id: id,
-        tipo: 'documento_pendente',
-        mensagem: `Projeto "${project.titulo}" não pode avançar: checklist incompleto.`,
-      })
-      return
+    const pending = checklistItems.filter((i) => !i.concluido).length
+    if (pending > 0) {
+      const confirmed = window.confirm(
+        `Ainda há ${pending} item(ns) pendente(s) no checklist.\nDeseja avançar mesmo assim?`
+      )
+      if (!confirmed) return
     }
 
     setAdvancing(true)
