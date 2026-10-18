@@ -159,14 +159,35 @@ export default function ProjetoDetalhe() {
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
-            {project.numero_pedido && (
-              <p className="text-xs font-mono text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded mb-1.5">
-                {project.numero_pedido}
-              </p>
-            )}
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              {project.numero_orcamento && (
+                <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                  ORC: {project.numero_orcamento}
+                </span>
+              )}
+              {project.numero_pedido && (
+                <span className="text-xs font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                  PED: {project.numero_pedido}
+                </span>
+              )}
+            </div>
             <h1 className="text-xl font-bold text-gray-900">{project.titulo}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{project.cliente}</p>
-            <div className="flex items-center gap-3 mt-3">
+            <p className="text-sm text-gray-700 mt-0.5 font-medium">{project.cliente}</p>
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              {project.cliente_fone && (
+                <a href={`https://wa.me/55${project.cliente_fone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+                  className="text-xs text-green-600 hover:underline">
+                  📱 {project.cliente_fone}
+                </a>
+              )}
+              {project.cliente_email && (
+                <a href={`mailto:${project.cliente_email}`}
+                  className="text-xs text-blue-600 hover:underline">
+                  ✉ {project.cliente_email}
+                </a>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mt-2">
               <EtapaBadge etapa={project.etapa_atual} />
               <span className="text-xs text-gray-400">Responsável: {project.users?.nome ?? '—'}</span>
             </div>

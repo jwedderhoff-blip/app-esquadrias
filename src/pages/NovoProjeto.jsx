@@ -8,9 +8,12 @@ import toast from 'react-hot-toast'
 export default function NovoProjeto() {
   const { session, profile } = useAuth()
   const navigate = useNavigate()
+  const [numeroOrcamento, setNumeroOrcamento] = useState('')
   const [numeroPedido, setNumeroPedido] = useState('')
   const [titulo, setTitulo] = useState('')
   const [cliente, setCliente] = useState('')
+  const [clienteFone, setClienteFone] = useState('')
+  const [clienteEmail, setClienteEmail] = useState('')
   const [responsavel, setResponsavel] = useState('')
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(false)
@@ -31,7 +34,7 @@ export default function NovoProjeto() {
     // Criar projeto
     const { data: project, error } = await supabase
       .from('projects')
-      .insert({ numero_pedido: numeroPedido || null, titulo, cliente, criado_por: responsavel || session.user.id, etapa_atual: 'pedido', company_id: profile?.company_id })
+      .insert({ numero_orcamento: numeroOrcamento || null, numero_pedido: numeroPedido || null, titulo, cliente, cliente_fone: clienteFone || null, cliente_email: clienteEmail || null, criado_por: responsavel || session.user.id, etapa_atual: 'pedido', company_id: profile?.company_id })
       .select()
       .single()
 
@@ -90,48 +93,100 @@ export default function NovoProjeto() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Novo Projeto</h1>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+
+        {/* Numeração */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Número do pedido / contrato</label>
-          <input
-            value={numeroPedido}
-            onChange={(e) => setNumeroPedido(e.target.value)}
-            placeholder="Ex: PED-2024-001"
-            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
-          />
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Numeração</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nº do orçamento</label>
+              <input
+                value={numeroOrcamento}
+                onChange={(e) => setNumeroOrcamento(e.target.value)}
+                placeholder="Ex: ORC-2024-001"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nº do pedido / contrato</label>
+              <input
+                value={numeroPedido}
+                onChange={(e) => setNumeroPedido(e.target.value)}
+                placeholder="Ex: PED-2024-001"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+              />
+            </div>
+          </div>
         </div>
+
+        {/* Dados do cliente */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Título do projeto *</label>
-          <input
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            required
-            placeholder="Ex: Esquadrias residência Silva"
-            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Dados do cliente</p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome do cliente *</label>
+              <input
+                value={cliente}
+                onChange={(e) => setCliente(e.target.value)}
+                required
+                placeholder="Nome completo ou razão social"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Telefone / WhatsApp</label>
+                <input
+                  type="tel"
+                  value={clienteFone}
+                  onChange={(e) => setClienteFone(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email do cliente</label>
+                <input
+                  type="email"
+                  value={clienteEmail}
+                  onChange={(e) => setClienteEmail(e.target.value)}
+                  placeholder="cliente@email.com"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Projeto */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Cliente *</label>
-          <input
-            value={cliente}
-            onChange={(e) => setCliente(e.target.value)}
-            required
-            placeholder="Nome do cliente ou empresa"
-            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Responsável *</label>
-          <select
-            value={responsavel}
-            onChange={(e) => setResponsavel(e.target.value)}
-            required
-            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-          >
-            <option value="">Selecione...</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>{u.nome}</option>
-            ))}
-          </select>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Projeto</p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Título do projeto *</label>
+              <input
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                required
+                placeholder="Ex: Esquadrias residência Silva"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Responsável *</label>
+              <select
+                value={responsavel}
+                onChange={(e) => setResponsavel(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              >
+                <option value="">Selecione...</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>{u.nome}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
         <div className="flex gap-3 pt-2">
           <button
