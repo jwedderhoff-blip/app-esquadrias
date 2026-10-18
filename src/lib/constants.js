@@ -17,4 +17,5 @@ export const PERFIL_LABEL = {
   operacional: 'Operacional',
   supervisor: 'Supervisor',
   administrador: 'Administrador',
+  super_admin: 'Super Admin',
 }

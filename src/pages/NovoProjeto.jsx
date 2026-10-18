@@ -30,7 +30,7 @@ export default function NovoProjeto() {
     // Criar projeto
     const { data: project, error } = await supabase
       .from('projects')
-      .insert({ titulo, cliente, criado_por: responsavel || session.user.id, etapa_atual: 'pedido' })
+      .insert({ titulo, cliente, criado_por: responsavel || session.user.id, etapa_atual: 'pedido', company_id: profile?.company_id })
       .select()
       .single()
 

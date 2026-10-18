@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   FolderIcon, BriefcaseIcon, UsersIcon, Bars3Icon, XMarkIcon,
-  ArrowRightOnRectangleIcon, ChartBarIcon,
+  ArrowRightOnRectangleIcon, ChartBarIcon, BuildingOffice2Icon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../context/AuthContext'
 import NotificationBell from './NotificationBell'
 
 const navItems = [
-  { to: '/', label: 'Projetos', icon: FolderIcon, roles: ['operacional', 'supervisor', 'administrador'] },
-  { to: '/carteira', label: 'Carteira', icon: BriefcaseIcon, roles: ['supervisor', 'administrador'] },
-  { to: '/usuarios', label: 'Usuários', icon: UsersIcon, roles: ['administrador'] },
-  { to: '/log', label: 'Log de Atividades', icon: ChartBarIcon, roles: ['administrador'] },
+  { to: '/', label: 'Projetos', icon: FolderIcon, roles: ['operacional', 'supervisor', 'administrador', 'super_admin'] },
+  { to: '/carteira', label: 'Carteira', icon: BriefcaseIcon, roles: ['supervisor', 'administrador', 'super_admin'] },
+  { to: '/usuarios', label: 'Usuários', icon: UsersIcon, roles: ['administrador', 'super_admin'] },
+  { to: '/log', label: 'Log de Atividades', icon: ChartBarIcon, roles: ['administrador', 'super_admin'] },
+  { to: '/admin', label: 'Empresas', icon: BuildingOffice2Icon, roles: ['super_admin'] },
 ]
 
 export default function Layout({ children }) {

@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { PlusIcon, PencilSquareIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { PERFIL_LABEL } from '../lib/constants'
+import { useAuth } from '../context/AuthContext'
 import Spinner from '../components/ui/Spinner'
 import toast from 'react-hot-toast'
 
 const PERFIS = ['operacional', 'supervisor', 'administrador']
 
-function ModalUsuario({ usuario, onClose, onSaved }) {
+function ModalUsuario({ usuario, onClose, onSaved, companyId }) {
   const editing = !!usuario?.id
   const [nome, setNome] = useState(usuario?.nome ?? '')
   const [email, setEmail] = useState(usuario?.email ?? '')
@@ -42,10 +43,10 @@ function ModalUsuario({ usuario, onClose, onSaved }) {
         if (signUpError) { toast.error('Erro ao criar usuário: ' + signUpError.message); setLoading(false); return }
         const userId = signUpData.user?.id
         if (!userId) { toast.error('Erro ao obter ID do usuário criado.'); setLoading(false); return }
-        await supabase.from('users').insert({ id: userId, nome, email, perfil, ativo })
+        await supabase.from('users').insert({ id: userId, nome, email, perfil, ativo, company_id: companyId })
       } else {
         const userId = authData.user?.id
-        await supabase.from('users').insert({ id: userId, nome, email, perfil, ativo })
+        await supabase.from('users').insert({ id: userId, nome, email, perfil, ativo, company_id: companyId })
       }
       toast.success('Usuário criado!')
     }
@@ -108,6 +109,7 @@ function ModalUsuario({ usuario, onClose, onSaved }) {
 }
 
 export default function Usuarios() {
+  const { profile } = useAuth()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null) // null | {} | usuario
@@ -184,6 +186,7 @@ export default function Usuarios() {
           usuario={modal?.id ? modal : null}
           onClose={() => setModal(null)}
           onSaved={fetchUsers}
+          companyId={profile?.company_id}
         />
       )}
     </div>

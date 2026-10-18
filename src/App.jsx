@@ -11,6 +11,7 @@ import ProjetoDetalhe from './pages/ProjetoDetalhe'
 import Carteira from './pages/Carteira'
 import LogAtividades from './pages/LogAtividades'
 import Usuarios from './pages/Usuarios'
+import Admin from './pages/Admin'
 
 function AppRoutes() {
   return (
@@ -62,6 +63,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute requiredPerfil={['administrador']}>
             <Layout><Usuarios /></Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute requiredPerfil={['super_admin']}>
+            <Layout><Admin /></Layout>
           </ProtectedRoute>
         }
       />

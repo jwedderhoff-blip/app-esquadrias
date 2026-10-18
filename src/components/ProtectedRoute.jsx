@@ -15,7 +15,7 @@ export default function ProtectedRoute({ children, requiredPerfil }) {
 
   if (!session) return <Navigate to="/login" replace />
 
-  if (requiredPerfil && profile && !requiredPerfil.includes(profile.perfil)) {
+  if (requiredPerfil && profile && profile.perfil !== 'super_admin' && !requiredPerfil.includes(profile.perfil)) {
     return <Navigate to="/" replace />
   }
 
