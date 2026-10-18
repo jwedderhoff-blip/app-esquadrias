@@ -79,6 +79,9 @@ export default function Carteira() {
                     <Link to={`/projetos/${p.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
                       {p.titulo}
                     </Link>
+                    {p.numero_pedido && (
+                      <span className="ml-2 text-xs font-mono text-blue-500">{p.numero_pedido}</span>
+                    )}
                     {p.diasNaEtapa > 7 && (
                       <span className="ml-2 text-xs text-amber-600 font-medium">⚠ Parado</span>
                     )}

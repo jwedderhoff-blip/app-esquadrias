@@ -111,6 +111,9 @@ export default function Projetos() {
                     <Link to={`/projetos/${p.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
                       {p.titulo}
                     </Link>
+                    {p.numero_pedido && (
+                      <span className="ml-2 text-xs font-mono text-blue-500">{p.numero_pedido}</span>
+                    )}
                     <p className="text-xs text-gray-400 sm:hidden mt-0.5">{p.cliente}</p>
                   </td>
                   <td className="px-5 py-3.5 text-gray-600 hidden sm:table-cell">{p.cliente}</td>
