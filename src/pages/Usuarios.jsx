@@ -37,19 +37,18 @@ function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmi
       if (error) { toast.error('Erro ao atualizar usuário.'); setLoading(false); return }
       toast.success('Usuário atualizado!')
     } else {
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email, password: senha, email_confirm: true,
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ email, password: senha, nome, perfil, ativo, company_id: companyId || null }),
       })
-      const insertData = { nome, email, perfil, ativo, company_id: companyId || null }
-      if (authError) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password: senha })
-        if (signUpError) { toast.error('Erro ao criar usuário: ' + signUpError.message); setLoading(false); return }
-        const userId = signUpData.user?.id
-        if (!userId) { toast.error('Erro ao obter ID do usuário.'); setLoading(false); return }
-        await supabase.from('users').insert({ id: userId, ...insertData })
-      } else {
-        await supabase.from('users').insert({ id: authData.user?.id, ...insertData })
-      }
+      const result = await res.json()
+      if (!res.ok) { toast.error('Erro ao criar usuário: ' + (result.error || res.statusText)); setLoading(false); return }
       toast.success('Usuário criado!')
     }
 
