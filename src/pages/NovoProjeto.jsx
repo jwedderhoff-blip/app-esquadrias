@@ -79,6 +79,28 @@ export default function NovoProjeto() {
 
     toast.success('Projeto criado com sucesso!')
     navigate(`/projetos/${project.id}`)
+
+    // Criar pasta no Drive em segundo plano (não bloqueia a navegação)
+    if (profile?.company_id) {
+      const { data: { session: s } } = await supabase.auth.getSession()
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-drive-folder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${s?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          project_id: project.id,
+          project_title: titulo,
+          company_id: profile.company_id,
+        }),
+      }).then(async (res) => {
+        const data = await res.json()
+        if (res.ok) toast.success('📁 Pasta criada no Drive')
+        else toast.error('Drive: ' + (data.error || 'erro ao criar pasta'))
+      }).catch(() => toast.error('Drive: sem conexão'))
+    }
   }
 
   return (
