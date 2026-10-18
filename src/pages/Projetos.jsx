@@ -11,11 +11,12 @@ import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 
 export default function Projetos() {
-  const { profile } = useAuth()
+  const { profile, effectiveCompanyId } = useAuth()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterEtapa, setFilterEtapa] = useState('')
+  const companyId = effectiveCompanyId()
 
   async function fetchProjects() {
     setLoading(true)
@@ -24,13 +25,15 @@ export default function Projetos() {
       .select('*, users!criado_por(nome)')
       .order('atualizado_em', { ascending: false })
 
+    if (companyId) q = q.eq('company_id', companyId)
+
     const { data, error } = await q
     if (error) toast.error('Erro ao carregar projetos')
     setProjects(data || [])
     setLoading(false)
   }
 
-  useEffect(() => { fetchProjects() }, [])
+  useEffect(() => { fetchProjects() }, [companyId])
 
   const filtered = projects.filter((p) => {
     const matchSearch = !search ||

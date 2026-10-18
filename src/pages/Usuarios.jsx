@@ -8,45 +8,47 @@ import toast from 'react-hot-toast'
 
 const PERFIS = ['operacional', 'supervisor', 'administrador']
 
-function ModalUsuario({ usuario, onClose, onSaved, companyId }) {
+function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmin }) {
   const editing = !!usuario?.id
   const [nome, setNome] = useState(usuario?.nome ?? '')
   const [email, setEmail] = useState(usuario?.email ?? '')
   const [perfil, setPerfil] = useState(usuario?.perfil ?? 'operacional')
   const [ativo, setAtivo] = useState(usuario?.ativo ?? true)
   const [senha, setSenha] = useState('')
+  const [companyId, setCompanyId] = useState(usuario?.company_id ?? defaultCompanyId ?? '')
+  const [companies, setCompanies] = useState([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      supabase.from('companies').select('id, nome').eq('ativo', true).order('nome')
+        .then(({ data }) => setCompanies(data || []))
+    }
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
 
     if (editing) {
-      // Atualizar perfil
-      const { error } = await supabase
-        .from('users')
-        .update({ nome, perfil, ativo })
-        .eq('id', usuario.id)
+      const update = { nome, perfil, ativo }
+      if (isSuperAdmin) update.company_id = companyId || null
+      const { error } = await supabase.from('users').update(update).eq('id', usuario.id)
       if (error) { toast.error('Erro ao atualizar usuário.'); setLoading(false); return }
       toast.success('Usuário atualizado!')
     } else {
-      // Criar via Admin API (requer service role — aqui via edge function ou direto se tiver)
-      // Neste MVP usamos o signUp padrão + insert em public.users
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password: senha,
-        email_confirm: true,
+        email, password: senha, email_confirm: true,
       })
+      const insertData = { nome, email, perfil, ativo, company_id: companyId || null }
       if (authError) {
-        // Fallback: tenta signUp normal
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password: senha })
         if (signUpError) { toast.error('Erro ao criar usuário: ' + signUpError.message); setLoading(false); return }
         const userId = signUpData.user?.id
-        if (!userId) { toast.error('Erro ao obter ID do usuário criado.'); setLoading(false); return }
-        await supabase.from('users').insert({ id: userId, nome, email, perfil, ativo, company_id: companyId })
+        if (!userId) { toast.error('Erro ao obter ID do usuário.'); setLoading(false); return }
+        await supabase.from('users').insert({ id: userId, ...insertData })
       } else {
-        const userId = authData.user?.id
-        await supabase.from('users').insert({ id: userId, nome, email, perfil, ativo, company_id: companyId })
+        await supabase.from('users').insert({ id: authData.user?.id, ...insertData })
       }
       toast.success('Usuário criado!')
     }
@@ -87,6 +89,16 @@ function ModalUsuario({ usuario, onClose, onSaved, companyId }) {
               {PERFIS.map((p) => <option key={p} value={p}>{PERFIL_LABEL[p]}</option>)}
             </select>
           </div>
+          {isSuperAdmin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+              <select value={companyId} onChange={(e) => setCompanyId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Sem empresa</option>
+                {companies.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <input type="checkbox" id="ativo" checked={ativo} onChange={(e) => setAtivo(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
@@ -109,18 +121,23 @@ function ModalUsuario({ usuario, onClose, onSaved, companyId }) {
 }
 
 export default function Usuarios() {
-  const { profile } = useAuth()
+  const { profile, effectiveCompanyId } = useAuth()
+  const isSuperAdmin = profile?.perfil === 'super_admin'
+  const companyId = effectiveCompanyId()
   const [users, setUsers] = useState([])
+  const [companies, setCompanies] = useState([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState(null) // null | {} | usuario
+  const [modal, setModal] = useState(null)
 
   async function fetchUsers() {
-    const { data } = await supabase.from('users').select('*').order('nome')
+    let q = supabase.from('users').select('*, companies(nome)').order('nome')
+    if (companyId) q = q.eq('company_id', companyId)
+    const { data } = await q
     setUsers(data || [])
     setLoading(false)
   }
 
-  useEffect(() => { fetchUsers() }, [])
+  useEffect(() => { fetchUsers() }, [companyId])
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
 
@@ -146,6 +163,7 @@ export default function Usuarios() {
             <tr className="border-b border-gray-100 bg-gray-50">
               <th className="text-left px-5 py-3 font-medium text-gray-600">Nome</th>
               <th className="text-left px-5 py-3 font-medium text-gray-600 hidden sm:table-cell">Email</th>
+              {isSuperAdmin && <th className="text-left px-5 py-3 font-medium text-gray-600 hidden md:table-cell">Empresa</th>}
               <th className="text-left px-5 py-3 font-medium text-gray-600">Perfil</th>
               <th className="text-left px-5 py-3 font-medium text-gray-600">Status</th>
               <th className="px-5 py-3" />
@@ -156,8 +174,13 @@ export default function Usuarios() {
               <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-5 py-3.5 font-medium text-gray-800">{u.nome}</td>
                 <td className="px-5 py-3.5 text-gray-500 hidden sm:table-cell">{u.email}</td>
+                {isSuperAdmin && (
+                  <td className="px-5 py-3.5 text-gray-500 text-xs hidden md:table-cell">
+                    {u.companies?.nome ?? <span className="text-gray-300">—</span>}
+                  </td>
+                )}
                 <td className="px-5 py-3.5">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                     {PERFIL_LABEL[u.perfil] ?? u.perfil}
                   </span>
                 </td>
@@ -167,11 +190,7 @@ export default function Usuarios() {
                   </span>
                 </td>
                 <td className="px-5 py-3.5 text-right">
-                  <button
-                    onClick={() => setModal(u)}
-                    className="text-gray-400 hover:text-blue-600 transition-colors"
-                    title="Editar"
-                  >
+                  <button onClick={() => setModal(u)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Editar">
                     <PencilSquareIcon className="w-4 h-4" />
                   </button>
                 </td>
@@ -186,7 +205,8 @@ export default function Usuarios() {
           usuario={modal?.id ? modal : null}
           onClose={() => setModal(null)}
           onSaved={fetchUsers}
-          companyId={profile?.company_id}
+          defaultCompanyId={companyId}
+          isSuperAdmin={isSuperAdmin}
         />
       )}
     </div>

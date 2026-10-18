@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   FolderIcon, BriefcaseIcon, UsersIcon, Bars3Icon, XMarkIcon,
   ArrowRightOnRectangleIcon, ChartBarIcon, BuildingOffice2Icon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../context/AuthContext'
+import { supabase } from '../../lib/supabase'
 import NotificationBell from './NotificationBell'
 
 const navItems = [
@@ -14,6 +16,64 @@ const navItems = [
   { to: '/log', label: 'Log de Atividades', icon: ChartBarIcon, roles: ['administrador', 'super_admin'] },
   { to: '/admin', label: 'Empresas', icon: BuildingOffice2Icon, roles: ['super_admin'] },
 ]
+
+function CompanySwitcher() {
+  const { viewingCompany, viewingCompanyId, setViewingCompanyId } = useAuth()
+  const [companies, setCompanies] = useState([])
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    supabase.from('companies').select('id, nome').eq('ativo', true).order('nome')
+      .then(({ data }) => setCompanies(data || []))
+  }, [])
+
+  const label = viewingCompany ? viewingCompany.nome : 'Todas as empresas'
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+          viewingCompanyId
+            ? 'bg-blue-50 border-blue-200 text-blue-700'
+            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+        }`}
+      >
+        <BuildingOffice2Icon className="w-4 h-4 flex-shrink-0" />
+        <span className="max-w-[140px] truncate">{label}</span>
+        <ChevronDownIcon className="w-3 h-3 flex-shrink-0" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1 w-56 bg-white rounded-xl border border-gray-200 shadow-lg z-20 overflow-hidden">
+            <button
+              onClick={() => { setViewingCompanyId(null); setOpen(false) }}
+              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                !viewingCompanyId ? 'font-semibold text-blue-700 bg-blue-50' : 'text-gray-700'
+              }`}
+            >
+              Todas as empresas
+            </button>
+            <div className="border-t border-gray-100" />
+            {companies.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => { setViewingCompanyId(c.id); setOpen(false) }}
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                  viewingCompanyId === c.id ? 'font-semibold text-blue-700 bg-blue-50' : 'text-gray-700'
+                }`}
+              >
+                {c.nome}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 export default function Layout({ children }) {
   const { profile, signOut } = useAuth()
@@ -27,6 +87,7 @@ export default function Layout({ children }) {
   }
 
   const allowed = navItems.filter((item) => item.roles.includes(profile?.perfil))
+  const isSuperAdmin = profile?.perfil === 'super_admin'
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -55,7 +116,7 @@ export default function Layout({ children }) {
       <div className="px-3 py-4 border-t border-gray-200">
         <div className="px-3 py-2 mb-2">
           <p className="text-sm font-medium text-gray-800 truncate">{profile?.nome}</p>
-          <p className="text-xs text-gray-500 capitalize">{profile?.perfil}</p>
+          <p className="text-xs text-gray-500 capitalize">{profile?.perfil?.replace('_', ' ')}</p>
         </div>
         <button
           onClick={handleSignOut}
@@ -99,11 +160,15 @@ export default function Layout({ children }) {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <span className="font-bold text-blue-600">App Esquadrias</span>
-          <NotificationBell />
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && <CompanySwitcher />}
+            <NotificationBell />
+          </div>
         </header>
 
         {/* Header desktop */}
-        <header className="hidden md:flex items-center justify-end px-6 py-3 bg-white border-b border-gray-200">
+        <header className="hidden md:flex items-center justify-end gap-3 px-6 py-3 bg-white border-b border-gray-200">
+          {isSuperAdmin && <CompanySwitcher />}
           <NotificationBell />
         </header>
 

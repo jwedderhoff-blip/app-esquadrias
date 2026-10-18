@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import { ETAPAS, ETAPA_INDEX } from '../lib/constants'
 import EtapaBadge from '../components/ui/Badge'
 import ProgressBar from '../components/ui/ProgressBar'
@@ -9,15 +10,20 @@ import { differenceInDays } from 'date-fns'
 import toast from 'react-hot-toast'
 
 export default function Carteira() {
+  const { effectiveCompanyId } = useAuth()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
+  const companyId = effectiveCompanyId()
 
   useEffect(() => {
     async function load() {
-      const { data: projects, error } = await supabase
+      let q = supabase
         .from('projects')
         .select('*, users!criado_por(nome)')
         .order('atualizado_em', { ascending: false })
+      if (companyId) q = q.eq('company_id', companyId)
+      const { data: projects, error } = await q
+
 
       if (error) { toast.error('Erro ao carregar carteira'); setLoading(false); return }
 
@@ -40,7 +46,7 @@ export default function Carteira() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [companyId])
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import Spinner from '../components/ui/Spinner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -14,24 +15,34 @@ const ACAO_LABEL = {
 }
 
 export default function LogAtividades() {
+  const { effectiveCompanyId } = useAuth()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterUser, setFilterUser] = useState('')
   const [filterProject, setFilterProject] = useState('')
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
+  const companyId = effectiveCompanyId()
 
   useEffect(() => {
     async function load() {
-      const [{ data: logsData }, { data: usersData }, { data: projectsData }] = await Promise.all([
-        supabase
-          .from('activity_log')
-          .select('*, users!usuario_id(nome), projects!project_id(titulo)')
-          .order('criado_em', { ascending: false })
-          .limit(500),
-        supabase.from('users').select('id, nome').eq('ativo', true).order('nome'),
-        supabase.from('projects').select('id, titulo').order('titulo'),
-      ])
+      let projectsQ = supabase.from('projects').select('id, titulo').order('titulo')
+      if (companyId) projectsQ = projectsQ.eq('company_id', companyId)
+
+      let usersQ = supabase.from('users').select('id, nome').eq('ativo', true).order('nome')
+      if (companyId) usersQ = usersQ.eq('company_id', companyId)
+
+      const [{ data: projectsData }, { data: usersData }] = await Promise.all([projectsQ, usersQ])
+
+      let logsQ = supabase
+        .from('activity_log')
+        .select('*, users!usuario_id(nome), projects!project_id(titulo)')
+        .order('criado_em', { ascending: false })
+        .limit(500)
+      if (companyId && projectsData?.length) {
+        logsQ = logsQ.in('project_id', projectsData.map((p) => p.id))
+      }
+      const { data: logsData } = await logsQ
 
       setLogs(logsData || [])
       setUsers(usersData || [])
@@ -39,7 +50,7 @@ export default function LogAtividades() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [companyId])
 
   const filtered = logs.filter((l) => {
     const matchUser = !filterUser || l.usuario_id === filterUser
