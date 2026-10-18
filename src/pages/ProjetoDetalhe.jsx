@@ -213,6 +213,7 @@ export default function ProjetoDetalhe() {
   const [tab, setTab] = useState('etapas')
   const [editModal, setEditModal] = useState(false)
   const [deleteModal, setDeleteModal] = useState(false)
+  const [advanceModal, setAdvanceModal] = useState(false)
 
   const canEdit = ['administrador', 'supervisor', 'super_admin'].includes(profile?.perfil)
   const canDelete = ['administrador', 'super_admin'].includes(profile?.perfil)
@@ -267,15 +268,17 @@ export default function ProjetoDetalhe() {
     navigate('/')
   }
 
-  async function handleAdvance() {
+  function handleAdvanceClick() {
     const pending = checklistItems.filter((i) => !i.concluido).length
     if (pending > 0) {
-      const confirmed = window.confirm(
-        `Ainda há ${pending} item(ns) pendente(s) no checklist.\nDeseja avançar mesmo assim?`
-      )
-      if (!confirmed) return
+      setAdvanceModal(true)
+    } else {
+      handleAdvance()
     }
+  }
 
+  async function handleAdvance() {
+    setAdvanceModal(false)
     setAdvancing(true)
     const currentIdx = ETAPA_INDEX[project.etapa_atual]
     if (currentIdx >= ETAPAS.length - 1) {
@@ -423,10 +426,9 @@ export default function ProjetoDetalhe() {
             )}
             {!isLast && (
               <button
-                onClick={handleAdvance}
-                disabled={advancing || !allDone}
-                title={!allDone ? 'Complete todos os itens do checklist para avançar' : ''}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                onClick={handleAdvanceClick}
+                disabled={advancing}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition"
               >
                 {advancing ? 'Avançando...' : 'Avançar etapa →'}
               </button>
@@ -510,6 +512,31 @@ export default function ProjetoDetalhe() {
           onClose={() => setDeleteModal(false)}
           onConfirm={handleDelete}
         />
+      )}
+      {advanceModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-base font-bold text-gray-900 mb-2">Avançar etapa</h2>
+            <p className="text-sm text-gray-600 mb-5">
+              Há {checklistItems.filter((i) => !i.concluido).length} item(ns) pendente(s) no checklist.
+              Deseja avançar mesmo assim?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setAdvanceModal(false)}
+                className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAdvance}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
+              >
+                Avançar mesmo assim
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
