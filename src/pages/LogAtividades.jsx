@@ -9,6 +9,8 @@ import toast from 'react-hot-toast'
 
 const ACAO_LABEL = {
   projeto_criado: 'Projeto criado',
+  projeto_editado: 'Projeto editado',
+  projeto_excluido: 'Projeto excluído',
   etapa_avancada: 'Etapa avançada',
   documento_adicionado: 'Documento adicionado',
   checklist_atualizado: 'Checklist atualizado',

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { PlusIcon, PencilSquareIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline'
+import { useEffect, useRef, useState } from 'react'
+import { PlusIcon, PencilSquareIcon, BuildingOffice2Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { PERFIL_LABEL } from '../lib/constants'
 import Spinner from '../components/ui/Spinner'
@@ -10,19 +10,60 @@ function ModalEmpresa({ empresa, onClose, onSaved }) {
   const [nome, setNome] = useState(empresa?.nome ?? '')
   const [slug, setSlug] = useState(empresa?.slug ?? '')
   const [ativo, setAtivo] = useState(empresa?.ativo ?? true)
+  const [endereco, setEndereco] = useState(empresa?.endereco ?? '')
+  const [cidade, setCidade] = useState(empresa?.cidade ?? '')
+  const [estado, setEstado] = useState(empresa?.estado ?? '')
+  const [whatsapp, setWhatsapp] = useState(empresa?.whatsapp ?? '')
+  const [emailResp, setEmailResp] = useState(empresa?.email_responsavel ?? '')
+  const [site, setSite] = useState(empresa?.site ?? '')
+  const [instagram, setInstagram] = useState(empresa?.instagram ?? '')
+  const [driveFolderUrl, setDriveFolderUrl] = useState(empresa?.drive_folder_url ?? '')
+  const [logoUrl, setLogoUrl] = useState(empresa?.logo_url ?? '')
+  const [logoFile, setLogoFile] = useState(null)
+  const [logoPreview, setLogoPreview] = useState(empresa?.logo_url ?? '')
+  const [uploading, setUploading] = useState(false)
   const [loading, setLoading] = useState(false)
+  const fileRef = useRef()
+
+  function handleLogoChange(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
 
+    let finalLogoUrl = logoUrl
+
+    if (logoFile) {
+      setUploading(true)
+      const ext = logoFile.name.split('.').pop()
+      const path = `logos/${slug || 'empresa'}-${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('documents').upload(path, logoFile, { upsert: true })
+      if (upErr) { toast.error('Erro ao enviar logo: ' + upErr.message); setLoading(false); setUploading(false); return }
+      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
+      finalLogoUrl = urlData.publicUrl
+      setUploading(false)
+    }
+
+    const payload = {
+      nome, slug, ativo, logo_url: finalLogoUrl || null,
+      endereco: endereco || null, cidade: cidade || null, estado: estado || null,
+      whatsapp: whatsapp || null, email_responsavel: emailResp || null,
+      site: site || null, instagram: instagram || null,
+      drive_folder_url: driveFolderUrl || null,
+    }
+
     if (editing) {
-      const { error } = await supabase.from('companies').update({ nome, slug, ativo }).eq('id', empresa.id)
-      if (error) { toast.error('Erro ao atualizar empresa: ' + error.message); setLoading(false); return }
+      const { error } = await supabase.from('companies').update(payload).eq('id', empresa.id)
+      if (error) { toast.error('Erro ao atualizar: ' + error.message); setLoading(false); return }
       toast.success('Empresa atualizada!')
     } else {
-      const { error } = await supabase.from('companies').insert({ nome, slug, ativo })
-      if (error) { toast.error('Erro ao criar empresa: ' + error.message); setLoading(false); return }
+      const { error } = await supabase.from('companies').insert(payload)
+      if (error) { toast.error('Erro ao criar: ' + error.message); setLoading(false); return }
       toast.success('Empresa criada!')
     }
 
@@ -32,34 +73,132 @@ function ModalEmpresa({ empresa, onClose, onSaved }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-5">{editing ? 'Editar empresa' : 'Nova empresa'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">{editing ? 'Editar empresa' : 'Nova empresa'}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[75vh]">
+
+          {/* Logo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} required
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Logo da empresa</p>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 flex-shrink-0">
+                {logoPreview
+                  ? <img src={logoPreview} alt="logo" className="w-full h-full object-contain" />
+                  : <BuildingOffice2Icon className="w-8 h-8 text-gray-300" />}
+              </div>
+              <div>
+                <button type="button" onClick={() => fileRef.current.click()}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
+                  {logoPreview ? 'Trocar logo' : 'Enviar logo'}
+                </button>
+                <p className="text-xs text-gray-400 mt-1">PNG, JPG ou SVG. Máx 2MB.</p>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+              </div>
+            </div>
           </div>
+
+          {/* Identificação */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Slug (identificador único) *</label>
-            <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} required
-              placeholder="ex: empresa-abc"
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Identificação</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome da empresa *</label>
+                <input value={nome} onChange={(e) => setNome(e.target.value)} required
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Slug (identificador único) *</label>
+                <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} required
+                  placeholder="ex: empresa-abc"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="ativo_emp" checked={ativo} onChange={(e) => setAtivo(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                <label htmlFor="ativo_emp" className="text-sm text-gray-700">Empresa ativa</label>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="ativo_emp" checked={ativo} onChange={(e) => setAtivo(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-            <label htmlFor="ativo_emp" className="text-sm text-gray-700">Empresa ativa</label>
+
+          {/* Endereço */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Endereço</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
+                <input value={endereco} onChange={(e) => setEndereco(e.target.value)} placeholder="Rua, número, bairro"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                  <input value={cidade} onChange={(e) => setCidade(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">UF</label>
+                  <input value={estado} onChange={(e) => setEstado(e.target.value.toUpperCase().slice(0, 2))} maxLength={2} placeholder="SP"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase" />
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Contato */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contato</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+                  <input type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="(11) 99999-9999"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email do responsável</label>
+                  <input type="email" value={emailResp} onChange={(e) => setEmailResp(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Site</label>
+                  <input type="url" value={site} onChange={(e) => setSite(e.target.value)} placeholder="https://..."
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+                  <input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@empresa"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Integração */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Integração Google Drive</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">URL da pasta raiz no Drive</label>
+              <input type="url" value={driveFolderUrl} onChange={(e) => setDriveFolderUrl(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/..."
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 mt-1">Pasta onde serão criadas as subpastas de cada projeto.</p>
+            </div>
+          </div>
+
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
               Cancelar
             </button>
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading || uploading}
               className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
-              {loading ? 'Salvando...' : 'Salvar'}
+              {uploading ? 'Enviando logo...' : loading ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </form>
@@ -191,7 +330,18 @@ export default function Admin() {
             <tbody className="divide-y divide-gray-50">
               {companies.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3.5 font-medium text-gray-800">{c.nome}</td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-3">
+                      {c.logo_url
+                        ? <img src={c.logo_url} alt="" className="w-8 h-8 rounded-lg object-contain border border-gray-100 bg-gray-50" />
+                        : <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><BuildingOffice2Icon className="w-4 h-4 text-gray-400" /></div>
+                      }
+                      <div>
+                        <p className="font-medium text-gray-800">{c.nome}</p>
+                        {c.cidade && <p className="text-xs text-gray-400">{c.cidade}{c.estado ? ` / ${c.estado}` : ''}</p>}
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-5 py-3.5 text-gray-500 font-mono text-xs hidden sm:table-cell">{c.slug}</td>
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${c.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
