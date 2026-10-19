@@ -76,7 +76,7 @@ function CompanySwitcher() {
 }
 
 export default function Layout({ children }) {
-  const { profile, signOut } = useAuth()
+  const { profile, signOut, currentCompany } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -92,8 +92,18 @@ export default function Layout({ children }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="px-6 py-5 border-b border-gray-200">
-        <span className="text-xl font-bold text-blue-600 tracking-tight">App Esquadrias</span>
-        <p className="text-xs text-gray-500 mt-0.5">Controle de Projetos</p>
+        {currentCompany?.logo_url ? (
+          <img
+            src={currentCompany.logo_url}
+            alt={currentCompany.nome}
+            className="h-10 w-auto object-contain max-w-[160px]"
+          />
+        ) : (
+          <>
+            <span className="text-xl font-bold text-blue-600 tracking-tight">App Esquadrias</span>
+            <p className="text-xs text-gray-500 mt-0.5">Controle de Projetos</p>
+          </>
+        )}
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {allowed.map(({ to, label, icon: Icon }) => {

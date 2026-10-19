@@ -10,6 +10,7 @@ export function AuthProvider({ children }) {
     () => sessionStorage.getItem('viewingCompanyId') || null
   )
   const [viewingCompany, setViewingCompany] = useState(null)
+  const [userCompany, setUserCompany] = useState(null)
 
   async function loadProfile(userId) {
     const { data } = await supabase
@@ -18,11 +19,19 @@ export function AuthProvider({ children }) {
       .eq('id', userId)
       .single()
     setProfile(data)
+    if (data?.company_id) {
+      const { data: company } = await supabase
+        .from('companies')
+        .select('id, nome, logo_url')
+        .eq('id', data.company_id)
+        .single()
+      setUserCompany(company)
+    }
   }
 
   async function loadViewingCompany(id) {
     if (!id) { setViewingCompany(null); return }
-    const { data } = await supabase.from('companies').select('id, nome').eq('id', id).single()
+    const { data } = await supabase.from('companies').select('id, nome, logo_url').eq('id', id).single()
     setViewingCompany(data)
   }
 
@@ -72,6 +81,8 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       session, profile, loading,
       viewingCompanyId, viewingCompany, setViewingCompanyId,
+      userCompany,
+      currentCompany: viewingCompany || userCompany,
       effectiveCompanyId,
       signIn, signOut,
     }}>
