@@ -482,29 +482,57 @@ export default function ProjetoDetalhe() {
               <span className="text-xs text-gray-400">Responsável: {project.users?.nome ?? '—'}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {canEdit && (
-              <button onClick={() => setEditModal(true)}
-                className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
-                <PencilSquareIcon className="w-4 h-4" />
-                Editar
-              </button>
-            )}
-            {canDelete && (
-              <button onClick={() => setDeleteModal(true)}
-                className="flex items-center gap-1.5 px-3 py-2 border border-red-200 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition">
-                <TrashIcon className="w-4 h-4" />
-              </button>
-            )}
-            {!isLast && (
-              <button
-                onClick={handleAdvanceClick}
-                disabled={advancing}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition"
-              >
-                {advancing ? 'Avançando...' : 'Avançar etapa →'}
-              </button>
-            )}
+          <div className="flex flex-col items-end gap-3 flex-shrink-0">
+            {/* Círculo de progresso */}
+            {(() => {
+              const stageIdx = ETAPA_INDEX[project.etapa_atual] ?? 0
+              const curStats = stageStats[project.etapa_atual]
+              const partial = curStats?.total > 0 ? curStats.done / curStats.total : 0
+              const pct = Math.min(100, Math.round(((stageIdx + partial) / ETAPAS.length) * 100))
+              const color = pct === 100 ? '#22c55e' : pct >= 60 ? '#3b82f6' : pct >= 30 ? '#f59e0b' : '#94a3b8'
+              const r = 30, circ = 2 * Math.PI * r
+              const dash = (pct / 100) * circ
+              return (
+                <div className="flex flex-col items-center gap-1">
+                  <div className="relative w-20 h-20">
+                    <svg viewBox="0 0 72 72" className="w-full h-full -rotate-90">
+                      <circle cx="36" cy="36" r={r} fill="none" stroke="#f3f4f6" strokeWidth="8" />
+                      <circle cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="8"
+                        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+                        style={{ transition: 'stroke-dasharray 0.7s ease' }} />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-lg font-bold text-gray-900 leading-none">{pct}%</span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-gray-400">Progresso</span>
+                </div>
+              )
+            })()}
+            <div className="flex items-center gap-2">
+              {canEdit && (
+                <button onClick={() => setEditModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                  <PencilSquareIcon className="w-4 h-4" />
+                  Editar
+                </button>
+              )}
+              {canDelete && (
+                <button onClick={() => setDeleteModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-red-200 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition">
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              )}
+              {!isLast && (
+                <button
+                  onClick={handleAdvanceClick}
+                  disabled={advancing}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition"
+                >
+                  {advancing ? 'Avançando...' : 'Avançar etapa →'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -543,28 +571,9 @@ export default function ProjetoDetalhe() {
               )
             })}
           </div>
-          {/* Barra de progresso evolutivo */}
-          {(() => {
-            const stageIdx = ETAPA_INDEX[project.etapa_atual] ?? 0
-            const curStats = stageStats[project.etapa_atual]
-            const partial = curStats?.total > 0 ? curStats.done / curStats.total : 0
-            const pct = Math.min(100, Math.round(((stageIdx + partial) / ETAPAS.length) * 100))
-            const color = pct === 100 ? '#22c55e' : pct >= 60 ? '#3b82f6' : pct >= 30 ? '#f59e0b' : '#94a3b8'
-            return (
-              <div className="mt-3">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-gray-500">Progresso geral do projeto</span>
-                  <span className="text-xs font-bold" style={{ color }}>{pct}%</span>
-                </div>
-                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: color }} />
-                </div>
-                <p className="text-xs text-gray-400 mt-1.5">
-                  Etapa atual: <strong>{ETAPAS[currentIdx]?.label}</strong> — toque em qualquer etapa para ver ou preencher
-                </p>
-              </div>
-            )
-          })()}
+          <p className="text-xs text-gray-400 mt-3">
+            Etapa atual: <strong>{ETAPAS[currentIdx]?.label}</strong> — toque em qualquer etapa para ver ou preencher
+          </p>
         </div>
       </div>
 
