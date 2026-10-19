@@ -351,6 +351,17 @@ export default function Admin() {
                   <td className="px-5 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
+                        onClick={() => {
+                          const link = `${window.location.origin}/dashboard/${c.id}`
+                          navigator.clipboard.writeText(link)
+                          toast.success('Link copiado!')
+                        }}
+                        className="text-xs text-purple-600 hover:text-purple-800 font-medium transition-colors"
+                        title="Copiar link do dashboard público"
+                      >
+                        📊 Dashboard
+                      </button>
+                      <button
                         onClick={() => setAdminModal(c)}
                         className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
                         title="Atribuir admin"

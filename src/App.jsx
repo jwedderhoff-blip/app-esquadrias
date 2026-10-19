@@ -12,11 +12,13 @@ import Carteira from './pages/Carteira'
 import LogAtividades from './pages/LogAtividades'
 import Usuarios from './pages/Usuarios'
 import Admin from './pages/Admin'
+import DashboardPublico from './pages/DashboardPublico'
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/dashboard/:companyId" element={<DashboardPublico />} />
 
       <Route
         path="/"

@@ -215,6 +215,7 @@ export default function ProjetoDetalhe() {
   const [editModal, setEditModal] = useState(false)
   const [deleteModal, setDeleteModal] = useState(false)
   const [advanceModal, setAdvanceModal] = useState(false)
+  const [stageStats, setStageStats] = useState({})
 
   const canEdit = ['administrador', 'supervisor', 'super_admin'].includes(profile?.perfil)
   const canDelete = ['administrador', 'super_admin'].includes(profile?.perfil)
@@ -266,6 +267,20 @@ export default function ProjetoDetalhe() {
     }
   }
 
+  async function loadAllStageStats() {
+    const { data } = await supabase
+      .from('checklist_items')
+      .select('etapa, concluido')
+      .eq('project_id', id)
+    const stats = {}
+    for (const item of data || []) {
+      if (!stats[item.etapa]) stats[item.etapa] = { total: 0, done: 0 }
+      stats[item.etapa].total++
+      if (item.concluido) stats[item.etapa].done++
+    }
+    setStageStats(stats)
+  }
+
   async function fetchChecklist() {
     const etapa = selectedEtapa ?? project?.etapa_atual
     if (!etapa) return
@@ -283,6 +298,7 @@ export default function ProjetoDetalhe() {
       if (p) loadStageChecklist(p.etapa_atual)
       setLoading(false)
     })
+    loadAllStageStats()
     supabase.from('users').select('id, nome').eq('ativo', true).order('nome').then(({ data }) => setUsuarios(data || []))
   }, [id])
 
@@ -496,28 +512,33 @@ export default function ProjetoDetalhe() {
         <div className="mt-5 overflow-x-auto">
           <div className="flex gap-1.5 min-w-max pb-1">
             {ETAPAS.map((etapa, i) => {
-              const done = i < currentIdx
+              const stats = stageStats[etapa.key]
+              const isFullyDone = stats && stats.total > 0 && stats.done === stats.total
+              const isPartial = stats && stats.done > 0 && stats.done < stats.total
               const active = etapa.key === project.etapa_atual
               const selected = etapa.key === selectedEtapa
+
+              let cls = ''
+              if (selected) {
+                if (isFullyDone) cls = 'bg-green-600 text-white border-green-600'
+                else if (isPartial) cls = 'bg-amber-500 text-white border-amber-500'
+                else if (active) cls = 'bg-blue-600 text-white border-blue-600'
+                else cls = 'bg-gray-700 text-white border-gray-700'
+              } else {
+                if (isFullyDone) cls = 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                else if (isPartial) cls = 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                else if (active) cls = 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                else cls = 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+              }
+
+              const prefix = !selected && isFullyDone ? '✓ ' : !selected && isPartial ? '◐ ' : ''
               return (
                 <button
                   key={etapa.key}
                   onClick={() => { setTab('etapas'); loadStageChecklist(etapa.key) }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border ${
-                    selected
-                      ? active
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : done
-                          ? 'bg-green-600 text-white border-green-600'
-                          : 'bg-gray-700 text-white border-gray-700'
-                      : done
-                        ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                        : active
-                          ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                          : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border ${cls}`}
                 >
-                  {done && !selected ? '✓ ' : ''}{etapa.label}
+                  {prefix}{etapa.label}
                 </button>
               )
             })}
@@ -552,7 +573,7 @@ export default function ProjetoDetalhe() {
           projectId={id}
           etapa={selectedEtapa ?? project.etapa_atual}
           items={checklistItems}
-          onUpdate={fetchChecklist}
+          onUpdate={() => { fetchChecklist(); loadAllStageStats() }}
           project={project}
           isCurrentEtapa={(selectedEtapa ?? project.etapa_atual) === project.etapa_atual}
         />
