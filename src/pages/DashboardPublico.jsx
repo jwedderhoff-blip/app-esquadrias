@@ -213,18 +213,31 @@ export default function DashboardPublico() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
-          {company.logo_url
-            ? <img src={company.logo_url} alt={company.nome} className="h-10 w-auto object-contain rounded" />
-            : <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-lg">{company.nome[0]}</span>
-              </div>
-          }
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">{company.nome}</h1>
-            <p className="text-xs text-gray-400">
-              Atualizado em {format(new Date(generated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-            </p>
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {company.logo_url
+              ? <img src={company.logo_url} alt={company.nome} className="h-10 w-auto object-contain rounded" />
+              : <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-bold text-lg">{company.nome[0]}</span>
+                </div>
+            }
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">{company.nome}</h1>
+              <p className="text-xs text-gray-400">
+                Atualizado em {format(new Date(generated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              </p>
+            </div>
+          </div>
+          {/* Crédito do desenvolvedor */}
+          <div className="hidden sm:flex flex-col items-end text-right">
+            <p className="text-[11px] font-semibold text-gray-500">Desenvolvido por</p>
+            <p className="text-sm font-bold text-gray-800">Jeferson Wedderhoff</p>
+            <a
+              href="mailto:jeferson.wedderhoff@gmail.com"
+              className="text-[11px] text-blue-500 hover:text-blue-700 transition-colors"
+            >
+              jeferson.wedderhoff@gmail.com
+            </a>
           </div>
         </div>
       </div>

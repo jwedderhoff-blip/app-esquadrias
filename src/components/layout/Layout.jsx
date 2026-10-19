@@ -207,6 +207,19 @@ export default function Layout({ children }) {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
+          <footer className="mt-8 pt-4 border-t border-gray-200 text-center">
+            <p className="text-xs text-gray-400">
+              Desenvolvido por{' '}
+              <span className="font-semibold text-gray-500">Jeferson Wedderhoff</span>
+              {' · '}
+              <a
+                href="mailto:jeferson.wedderhoff@gmail.com"
+                className="text-blue-500 hover:text-blue-700 transition-colors"
+              >
+                jeferson.wedderhoff@gmail.com
+              </a>
+            </p>
+          </footer>
         </main>
       </div>
     </div>
