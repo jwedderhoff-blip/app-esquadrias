@@ -13,6 +13,8 @@ import LogAtividades from './pages/LogAtividades'
 import Usuarios from './pages/Usuarios'
 import Admin from './pages/Admin'
 import DashboardPublico from './pages/DashboardPublico'
+import Configuracoes from './pages/Configuracoes'
+import { ThemeProvider } from './context/ThemeContext'
 
 function AppRoutes() {
   return (
@@ -78,6 +80,15 @@ function AppRoutes() {
         }
       />
 
+      <Route
+        path="/configuracoes"
+        element={
+          <ProtectedRoute>
+            <Layout><Configuracoes /></Layout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
@@ -85,13 +96,15 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <NotificationsProvider>
-          <AppRoutes />
-          <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-        </NotificationsProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <NotificationsProvider>
+            <AppRoutes />
+            <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+          </NotificationsProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }
