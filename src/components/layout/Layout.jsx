@@ -92,18 +92,22 @@ export default function Layout({ children }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="px-6 py-5 border-b border-gray-200">
-        {currentCompany?.logo_url ? (
-          <img
-            src={currentCompany.logo_url}
-            alt={currentCompany.nome}
-            className="h-10 w-auto object-contain max-w-[160px]"
-          />
-        ) : (
-          <>
-            <span className="text-xl font-bold text-blue-600 tracking-tight">App Esquadrias</span>
-            <p className="text-xs text-gray-500 mt-0.5">Controle de Projetos</p>
-          </>
-        )}
+        <span className="text-xs font-semibold text-blue-600 tracking-widest uppercase">App Esquadrias</span>
+        <div className="flex items-center gap-3 mt-2">
+          {currentCompany?.logo_url && (
+            <img
+              src={currentCompany.logo_url}
+              alt={currentCompany.nome}
+              className="h-9 w-9 object-contain rounded-lg flex-shrink-0"
+            />
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-gray-900 leading-tight truncate">
+              {currentCompany?.nome ?? 'Controle de Projetos'}
+            </p>
+            <p className="text-xs text-gray-400">Controle de Projetos</p>
+          </div>
+        </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {allowed.map(({ to, label, icon: Icon }) => {
