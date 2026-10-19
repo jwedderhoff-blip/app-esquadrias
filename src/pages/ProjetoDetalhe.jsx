@@ -543,9 +543,28 @@ export default function ProjetoDetalhe() {
               )
             })}
           </div>
-          <p className="text-xs text-gray-400 mt-1.5">
-            Etapa atual: <strong>{ETAPAS[currentIdx]?.label}</strong> — toque em qualquer etapa para ver ou preencher
-          </p>
+          {/* Barra de progresso evolutivo */}
+          {(() => {
+            const stageIdx = ETAPA_INDEX[project.etapa_atual] ?? 0
+            const curStats = stageStats[project.etapa_atual]
+            const partial = curStats?.total > 0 ? curStats.done / curStats.total : 0
+            const pct = Math.min(100, Math.round(((stageIdx + partial) / ETAPAS.length) * 100))
+            const color = pct === 100 ? '#22c55e' : pct >= 60 ? '#3b82f6' : pct >= 30 ? '#f59e0b' : '#94a3b8'
+            return (
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-gray-500">Progresso geral do projeto</span>
+                  <span className="text-xs font-bold" style={{ color }}>{pct}%</span>
+                </div>
+                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: color }} />
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Etapa atual: <strong>{ETAPAS[currentIdx]?.label}</strong> — toque em qualquer etapa para ver ou preencher
+                </p>
+              </div>
+            )
+          })()}
         </div>
       </div>
 

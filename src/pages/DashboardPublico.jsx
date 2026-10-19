@@ -104,7 +104,10 @@ function StagePipeline({ projects }) {
 
 function ProjectCard({ p }) {
   const e = ETAPA_MAP[p.etapa_atual] || { label: p.etapa_atual, color: '#94a3b8', bg: '#f8fafc', text: '#475569' }
-  const pct = p.checklist_total > 0 ? Math.round((p.checklist_done / p.checklist_total) * 100) : null
+  const stageIdx = ETAPAS.findIndex((et) => et.key === p.etapa_atual)
+  const checklistPartial = p.checklist_total > 0 ? p.checklist_done / p.checklist_total : 0
+  const pipelinePct = Math.min(100, Math.round(((stageIdx + checklistPartial) / ETAPAS.length) * 100))
+  const pipelineColor = pipelinePct === 100 ? '#22c55e' : pipelinePct >= 60 ? '#3b82f6' : pipelinePct >= 30 ? '#f59e0b' : '#94a3b8'
   const updated = p.atualizado_em || p.criado_em
 
   return (
@@ -122,23 +125,24 @@ function ProjectCard({ p }) {
         </span>
       </div>
 
-      {pct !== null && (
-        <div className="space-y-1">
-          <div className="flex justify-between text-[11px] text-gray-400">
-            <span>Checklist</span>
-            <span>{p.checklist_done}/{p.checklist_total}</span>
-          </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${pct}%`,
-                backgroundColor: pct === 100 ? '#22c55e' : pct >= 50 ? '#3b82f6' : '#f59e0b',
-              }}
-            />
-          </div>
+      {/* Barra de progresso evolutivo */}
+      <div className="space-y-1">
+        <div className="flex justify-between items-center text-[11px]">
+          <span className="text-gray-400">Progresso geral</span>
+          <span className="font-bold" style={{ color: pipelineColor }}>{pipelinePct}%</span>
         </div>
-      )}
+        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${pipelinePct}%`, backgroundColor: pipelineColor }}
+          />
+        </div>
+        {p.checklist_total > 0 && (
+          <p className="text-[10px] text-gray-300">
+            Checklist: {p.checklist_done}/{p.checklist_total} itens
+          </p>
+        )}
+      </div>
 
       <p className="text-[10px] text-gray-300 mt-2 text-right">
         {format(new Date(updated), "dd/MM/yy", { locale: ptBR })}
