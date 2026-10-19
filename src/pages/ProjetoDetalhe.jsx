@@ -7,7 +7,6 @@ import { ETAPAS, ETAPA_INDEX } from '../lib/constants'
 import EtapaBadge from '../components/ui/Badge'
 import Spinner from '../components/ui/Spinner'
 import ChecklistTab from '../components/projeto/ChecklistTab'
-import DocumentosTab from '../components/projeto/DocumentosTab'
 import RelatorioTab from '../components/projeto/RelatorioTab'
 import LogTab from '../components/projeto/LogTab'
 import toast from 'react-hot-toast'
@@ -195,7 +194,6 @@ function ModalConfirmarExclusao({ project, onClose, onConfirm, loading }) {
 
 const TABS = [
   { key: 'etapas', label: 'Etapas & Checklist' },
-  { key: 'documentos', label: 'Documentos' },
   { key: 'relatorio', label: 'Relatório' },
   { key: 'log', label: 'Log' },
 ]
@@ -605,9 +603,6 @@ export default function ProjetoDetalhe() {
           project={project}
           isCurrentEtapa={(selectedEtapa ?? project.etapa_atual) === project.etapa_atual}
         />
-      )}
-      {tab === 'documentos' && (
-        <DocumentosTab projectId={id} etapa={project.etapa_atual} project={project} />
       )}
       {tab === 'relatorio' && <RelatorioTab projectId={id} project={project} />}
       {tab === 'log' && <LogTab projectId={id} />}
