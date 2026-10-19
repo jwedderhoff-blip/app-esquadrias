@@ -133,6 +133,159 @@ function Field({ field, value, onChange, users }) {
   )
 }
 
+// ── Modal de orçamentos (múltiplos arquivos + formulário) ─────
+function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
+  const { session } = useAuth()
+  const fileRef = useRef(null)
+  const [docs, setDocs] = useState([])
+  const [values, setValues] = useState(item.dados || {})
+  const [uploading, setUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    supabase.from('documents').select('*')
+      .eq('checklist_item_id', item.id)
+      .order('criado_em')
+      .then(({ data }) => setDocs(data || []))
+  }, [])
+
+  function set(key, val) { setValues((v) => ({ ...v, [key]: val })) }
+
+  async function handleFileAdd(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `${projectId}/${etapa}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: false })
+    if (error) { toast.error('Erro ao enviar: ' + error.message); setUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
+    const { data: doc } = await supabase.from('documents').insert({
+      project_id: projectId, etapa,
+      nome_arquivo: file.name, url_storage: publicUrl,
+      enviado_por: session.user.id, checklist_item_id: item.id,
+    }).select().single()
+    setDocs((prev) => [...prev, doc])
+    e.target.value = ''
+    setUploading(false)
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    const { error } = await supabase.from('checklist_items').update({
+      dados: values,
+      concluido: true,
+      concluido_por: session.user.id,
+      concluido_em: new Date().toISOString(),
+    }).eq('id', item.id)
+    if (error) { toast.error('Erro: ' + error.message); setSaving(false); return }
+    toast.success('Orçamentos registrados!')
+    onDone(); onClose()
+  }
+
+  const base = 'w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Orçamentos realizados</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Anexe os orçamentos e registre o aprovado</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-4 flex-shrink-0">
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Arquivos enviados */}
+        <div className="mb-5">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Arquivos de orçamento</p>
+          {docs.length > 0 && (
+            <div className="space-y-1.5 mb-3">
+              {docs.map((d) => (
+                <div key={d.id} className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
+                  <PaperClipIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                  <a href={d.url_storage} target="_blank" rel="noreferrer"
+                    className="text-xs text-blue-700 hover:underline flex-1 truncate font-medium">
+                    {d.nome_arquivo}
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="w-full border-2 border-dashed border-gray-200 rounded-xl py-3 text-xs text-gray-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+          >
+            {uploading ? 'Enviando...' : '+ Adicionar orçamento (PDF, imagem…)'}
+          </button>
+          <input ref={fileRef} type="file" className="hidden"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+            onChange={handleFileAdd} />
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor aprovado *</label>
+            <input required value={values.fornecedor_aprovado || ''}
+              onChange={(e) => set('fornecedor_aprovado', e.target.value)}
+              placeholder="Nome do fornecedor selecionado"
+              className={base} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Valor aprovado (R$) *</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">R$</span>
+              <input required type="number" step="0.01" min="0" value={values.valor_aprovado || ''}
+                onChange={(e) => set('valor_aprovado', e.target.value)}
+                className={base + ' pl-9'} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data de entrega prevista *</label>
+            <input required type="date" value={values.data_entrega || ''}
+              onChange={(e) => set('data_entrega', e.target.value)}
+              className={base} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de compra *</label>
+            <select required value={values.tipo_compra || ''}
+              onChange={(e) => set('tipo_compra', e.target.value)}
+              className={base + ' bg-white'}>
+              <option value="">Selecione...</option>
+              <option value="Totalidade do material">Totalidade do material</option>
+              <option value="Compra parcial">Compra parcial</option>
+            </select>
+          </div>
+          {values.tipo_compra === 'Compra parcial' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">O que está sendo comprado nesta ordem</label>
+              <textarea rows={3} value={values.obs_compra || ''}
+                onChange={(e) => set('obs_compra', e.target.value)}
+                placeholder="Descreva os itens desta compra parcial..."
+                className={base + ' resize-none'} />
+            </div>
+          )}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
+              {saving ? 'Salvando...' : 'Confirmar OK'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ── Modal de formulário de dados ──────────────────────────────
 function ModalDados({ item, project, onClose, onDone }) {
   const { session } = useAuth()
@@ -294,6 +447,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   const [updating, setUpdating] = useState(null)
   const [anexoModal, setAnexoModal] = useState(null)
   const [dadosModal, setDadosModal] = useState(null)
+  const [orcamentosModal, setOrcamentosModal] = useState(null)
   const [users, setUsers] = useState([])
 
   const done = items.filter((i) => i.concluido).length
@@ -305,6 +459,9 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   }, [])
 
   function handleClick(item) {
+    if (item.descricao === 'Orçamentos realizados') {
+      setOrcamentosModal(item); return
+    }
     if (item.requer_documento && !item.concluido) {
       setAnexoModal(item); return
     }
@@ -331,6 +488,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   }
 
   function openEdit(item) {
+    if (item.descricao === 'Orçamentos realizados') { setOrcamentosModal(item); return }
     if (item.requer_documento) { setAnexoModal(item); return }
     const fields = CHECKLIST_FIELDS[item.descricao]
     if (fields?.length) { setDadosModal(item); return }
@@ -444,6 +602,10 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
         </div>
       )}
 
+      {orcamentosModal && (
+        <ModalOrcamentos item={orcamentosModal} projectId={projectId} etapa={etapa}
+          onClose={() => setOrcamentosModal(null)} onDone={onUpdate} />
+      )}
       {anexoModal && (
         <ModalAnexo item={anexoModal} projectId={projectId} etapa={etapa}
           onClose={() => setAnexoModal(null)} onDone={onUpdate} />
