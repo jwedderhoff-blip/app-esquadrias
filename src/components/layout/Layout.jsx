@@ -91,21 +91,29 @@ export default function Layout({ children }) {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className="px-6 py-5 border-b border-gray-200">
-        <span className="text-xs font-semibold text-blue-600 tracking-widest uppercase">App Esquadrias</span>
-        <div className="flex items-center gap-3 mt-2">
-          {currentCompany?.logo_url && (
+      <div className="px-4 py-4 border-b border-gray-200">
+        {/* Nome do app */}
+        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-3">App Esquadrias</p>
+        {/* Logo + Nome da empresa */}
+        <div className="flex items-center gap-2.5">
+          {currentCompany?.logo_url ? (
             <img
               src={currentCompany.logo_url}
               alt={currentCompany.nome}
-              className="h-9 w-9 object-contain rounded-lg flex-shrink-0"
+              className="h-8 w-8 object-contain rounded flex-shrink-0"
             />
+          ) : (
+            <div className="h-8 w-8 rounded bg-blue-600 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-bold">
+                {(currentCompany?.nome ?? 'A')[0]}
+              </span>
+            </div>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-bold text-gray-900 leading-tight truncate">
-              {currentCompany?.nome ?? 'Controle de Projetos'}
+            <p className="text-sm font-bold text-gray-900 truncate leading-tight">
+              {currentCompany?.nome ?? 'App Esquadrias'}
             </p>
-            <p className="text-xs text-gray-400">Controle de Projetos</p>
+            <p className="text-[11px] text-gray-400">Controle de Projetos</p>
           </div>
         </div>
       </div>
