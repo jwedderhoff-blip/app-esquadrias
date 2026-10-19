@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   FolderIcon, BriefcaseIcon, UsersIcon, Bars3Icon, XMarkIcon,
   ArrowRightOnRectangleIcon, ChartBarIcon, BuildingOffice2Icon,
-  ChevronDownIcon,
+  ChevronDownIcon, HomeIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -159,7 +159,9 @@ export default function Layout({ children }) {
           <button onClick={() => setSidebarOpen(true)} className="text-gray-600">
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <span className="font-bold text-blue-600">App Esquadrias</span>
+          <Link to="/" className="font-bold text-blue-600 hover:text-blue-700 transition-colors">
+            App Esquadrias
+          </Link>
           <div className="flex items-center gap-2">
             {isSuperAdmin && <CompanySwitcher />}
             <NotificationBell />
@@ -167,9 +169,18 @@ export default function Layout({ children }) {
         </header>
 
         {/* Header desktop */}
-        <header className="hidden md:flex items-center justify-end gap-3 px-6 py-3 bg-white border-b border-gray-200">
-          {isSuperAdmin && <CompanySwitcher />}
-          <NotificationBell />
+        <header className="hidden md:flex items-center justify-between gap-3 px-6 py-3 bg-white border-b border-gray-200">
+          <Link
+            to="/"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+          >
+            <HomeIcon className="w-4 h-4" />
+            Início
+          </Link>
+          <div className="flex items-center gap-3">
+            {isSuperAdmin && <CompanySwitcher />}
+            <NotificationBell />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
