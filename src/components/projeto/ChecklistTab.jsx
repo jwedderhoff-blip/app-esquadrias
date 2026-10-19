@@ -145,7 +145,7 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
   useEffect(() => {
     supabase.from('documents').select('*')
       .eq('checklist_item_id', item.id)
-      .order('criado_em')
+      .order('enviado_em')
       .then(({ data }) => setDocs(data || []))
   }, [])
 
