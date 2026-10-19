@@ -16,6 +16,37 @@ const ETAPAS = [
 
 const ETAPA_MAP = Object.fromEntries(ETAPAS.map((e) => [e.key, e]))
 
+function Ticker({ items }) {
+  // Duplica os itens para o loop contínuo parecer infinito
+  const doubled = [...items, ...items]
+  return (
+    <div className="bg-gray-900 overflow-hidden py-2.5 select-none">
+      <style>{`
+        @keyframes ticker-scroll {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .ticker-track {
+          display: flex;
+          width: max-content;
+          animation: ticker-scroll ${Math.max(items.length * 4, 20)}s linear infinite;
+        }
+        .ticker-track:hover { animation-play-state: paused; }
+      `}</style>
+      <div className="ticker-track">
+        {doubled.map((item, i) => (
+          <div key={i} className="flex items-center gap-2 px-6 whitespace-nowrap">
+            <span style={{ color: item.dotColor }} className="text-base leading-none">●</span>
+            <span className="text-xs font-medium text-gray-200">{item.label}</span>
+            <span className="text-xs font-bold" style={{ color: item.valueColor }}>{item.value}</span>
+            <span className="text-gray-600 mx-2 text-xs">|</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function DonutChart({ pct }) {
   const r = 36
   const circ = 2 * Math.PI * r
@@ -155,6 +186,25 @@ export default function DashboardPublico() {
   const filterOptions = [{ key: 'todas', label: 'Todas as etapas' }, ...etapasComProjetos]
   const filtered = filterEtapa === 'todas' ? projects : projects.filter((p) => p.etapa_atual === filterEtapa)
 
+  // Monta os itens do ticker: stats + destaques dos projetos
+  const tickerItems = [
+    { label: 'Total de projetos', value: total, dotColor: '#94a3b8', valueColor: '#f8fafc' },
+    { label: 'Em andamento', value: emAndamento, dotColor: '#3b82f6', valueColor: '#93c5fd' },
+    { label: 'Encerrados', value: encerrados, dotColor: '#22c55e', valueColor: '#86efac' },
+    { label: 'Conclusão geral', value: `${globalPct}%`, dotColor: globalPct === 100 ? '#22c55e' : '#f59e0b', valueColor: '#fde68a' },
+    ...etapasComProjetos.map((e) => {
+      const n = projects.filter((p) => p.etapa_atual === e.key).length
+      return { label: e.label, value: `${n} projeto${n !== 1 ? 's' : ''}`, dotColor: e.color, valueColor: '#f8fafc' }
+    }),
+    // Últimos projetos atualizados
+    ...projects.slice(0, 5).map((p) => ({
+      label: p.titulo,
+      value: ETAPA_MAP[p.etapa_atual]?.label ?? p.etapa_atual,
+      dotColor: ETAPA_MAP[p.etapa_atual]?.color ?? '#94a3b8',
+      valueColor: ETAPA_MAP[p.etapa_atual]?.color ?? '#94a3b8',
+    })),
+  ]
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -174,6 +224,9 @@ export default function DashboardPublico() {
           </div>
         </div>
       </div>
+
+      {/* Ticker de scroll contínuo */}
+      <Ticker items={tickerItems} />
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
