@@ -275,6 +275,19 @@ function DadosResumo({ item, users }) {
   )
 }
 
+// Verifica se algum campo de data com alertar_atraso está vencido
+function isOverdue(item) {
+  if (item.concluido) return false
+  const fields = CHECKLIST_FIELDS[item.descricao] || []
+  const dados = item.dados || {}
+  return fields.some((f) => {
+    if (!f.alertar_atraso || f.type !== 'date') return false
+    const v = dados[f.key]
+    if (!v) return false
+    return new Date(v + 'T23:59:59') < new Date()
+  })
+}
+
 // ── Componente principal ──────────────────────────────────────
 export default function ChecklistTab({ projectId, etapa, items, onUpdate, project }) {
   const { session } = useAuth()
@@ -348,12 +361,17 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
           {items.map((item) => {
             const hasFields = !!(CHECKLIST_FIELDS[item.descricao]?.length)
             const hasDados = hasFields && Object.keys(item.dados || {}).length > 0
+            const overdue = isOverdue(item)
 
             return (
               <div
                 key={item.id}
                 className={`rounded-xl border transition-colors ${
-                  item.concluido ? 'bg-green-50 border-green-100' : 'bg-white border-gray-200'
+                  item.concluido
+                    ? 'bg-green-50 border-green-100'
+                    : overdue
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-white border-gray-200'
                 }`}
               >
                 <div className="flex items-center gap-3 p-4">
@@ -376,6 +394,11 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
 
                   {/* Badges e ações */}
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    {overdue && (
+                      <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200">
+                        ⚠ Atrasado
+                      </span>
+                    )}
                     {item.requer_documento && (
                       <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
                         item.concluido ? 'bg-green-100 text-green-600' : 'bg-amber-50 text-amber-600 border border-amber-200'
