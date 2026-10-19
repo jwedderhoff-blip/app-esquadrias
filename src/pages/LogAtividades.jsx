@@ -41,8 +41,10 @@ export default function LogAtividades() {
         .select('*, users!usuario_id(nome), projects!project_id(titulo)')
         .order('criado_em', { ascending: false })
         .limit(500)
-      if (companyId && projectsData?.length) {
-        logsQ = logsQ.in('project_id', projectsData.map((p) => p.id))
+      if (companyId) {
+        const ids = projectsData?.map((p) => p.id) ?? []
+        // se não há projetos, garante resultado vazio em vez de retornar tudo
+        logsQ = logsQ.in('project_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000'])
       }
       const { data: logsData } = await logsQ
 
@@ -106,7 +108,7 @@ export default function LogAtividades() {
               ) : filtered.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                   <td className="px-5 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {format(new Date(log.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}
+                    {log.criado_em ? format(new Date(log.criado_em), "dd/MM/yy HH:mm", { locale: ptBR }) : '—'}
                   </td>
                   <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{log.users?.nome ?? '—'}</td>
                   <td className="px-5 py-3 hidden sm:table-cell">

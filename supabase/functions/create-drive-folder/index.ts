@@ -100,6 +100,19 @@ serve(async (req) => {
       })
     }
 
+    // Verificar que o projeto pertence à empresa informada
+    const { data: projectCheck, error: projCheckErr } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', project_id)
+      .eq('company_id', company_id)
+      .single()
+    if (projCheckErr || !projectCheck) {
+      return new Response(JSON.stringify({ error: 'Projeto não pertence à empresa informada.' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // Buscar pasta-mãe da empresa
     const { data: company, error: compErr } = await supabase
       .from('companies')

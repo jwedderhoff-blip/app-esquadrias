@@ -120,7 +120,7 @@ export default function Projetos() {
                   <td className="px-5 py-3.5"><EtapaBadge etapa={p.etapa_atual} /></td>
                   <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden md:table-cell">{p.users?.nome ?? '—'}</td>
                   <td className="px-5 py-3.5 text-gray-400 dark:text-gray-500 hidden lg:table-cell">
-                    {formatDistanceToNow(new Date(p.atualizado_em), { addSuffix: true, locale: ptBR })}
+                    {p.atualizado_em ? formatDistanceToNow(new Date(p.atualizado_em), { addSuffix: true, locale: ptBR }) : '—'}
                   </td>
                 </tr>
               ))}
