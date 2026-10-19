@@ -201,39 +201,61 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
 
         {/* Arquivos enviados */}
         <div className="mb-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Arquivos de orçamento</p>
-          {docs.length > 0 && (
-            <div className="space-y-1.5 mb-3">
-              {docs.map((d) => {
-                const isAprovado = values.doc_aprovado_id === d.id
-                return (
-                  <div key={d.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
-                    isAprovado ? 'bg-green-50 border-green-300' : 'bg-blue-50 border-blue-100'
-                  }`}>
-                    <PaperClipIcon className={`w-4 h-4 flex-shrink-0 ${isAprovado ? 'text-green-500' : 'text-blue-400'}`} />
-                    <a href={d.url_storage} target="_blank" rel="noreferrer"
-                      className={`text-xs hover:underline flex-1 truncate font-medium ${isAprovado ? 'text-green-700' : 'text-blue-700'}`}>
-                      {d.nome_arquivo}
+          {docs.length > 0 && (() => {
+            const aprovado = docs.find((d) => d.id === values.doc_aprovado_id)
+            const outros = docs.filter((d) => d.id !== values.doc_aprovado_id)
+            return (
+              <div className="space-y-3 mb-3">
+                {/* Orçamento aprovado em destaque */}
+                {aprovado ? (
+                  <div>
+                    <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1.5">Orçamento aprovado</p>
+                    <a href={aprovado.url_storage} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-3 px-4 py-3 bg-green-50 border-2 border-green-400 rounded-xl hover:bg-green-100 transition-colors group">
+                      <div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
+                        <PaperClipIcon className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-green-800 truncate flex-1 group-hover:underline">
+                        {aprovado.nome_arquivo}
+                      </span>
+                      <span className="flex-shrink-0 text-[11px] font-bold text-green-700 bg-green-200 px-2 py-0.5 rounded-full">
+                        ✓ APROVADO
+                      </span>
                     </a>
-                    {isAprovado
-                      ? (
-                        <span className="flex-shrink-0 flex items-center gap-1 text-[11px] font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                          ✓ Aprovado
-                        </span>
-                      )
-                      : (
-                        <button type="button"
-                          onClick={() => set('doc_aprovado_id', d.id)}
-                          className="flex-shrink-0 text-[11px] text-gray-400 hover:text-green-600 hover:bg-green-50 px-2 py-0.5 rounded-full border border-transparent hover:border-green-200 transition-colors">
-                          Marcar aprovado
-                        </button>
-                      )
-                    }
                   </div>
-                )
-              })}
-            </div>
-          )}
+                ) : (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    Selecione qual orçamento foi aprovado clicando em "Marcar aprovado"
+                  </p>
+                )}
+
+                {/* Demais arquivos para consulta */}
+                {outros.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                      Arquivos para consulta ({outros.length})
+                    </p>
+                    <div className="space-y-1">
+                      {outros.map((d) => (
+                        <div key={d.id} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg">
+                          <PaperClipIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <a href={d.url_storage} target="_blank" rel="noreferrer"
+                            className="text-xs text-gray-500 hover:text-gray-800 hover:underline flex-1 truncate">
+                            {d.nome_arquivo}
+                          </a>
+                          <button type="button"
+                            onClick={() => set('doc_aprovado_id', d.id)}
+                            className="flex-shrink-0 text-[11px] text-gray-400 hover:text-green-600 px-2 py-0.5 rounded border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors">
+                            Marcar aprovado
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
