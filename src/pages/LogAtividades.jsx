@@ -65,15 +65,15 @@ export default function LogAtividades() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Log de Atividades</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Histórico completo de ações no sistema</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Log de Atividades</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Histórico completo de ações no sistema</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <select
           value={filterUser}
           onChange={(e) => setFilterUser(e.target.value)}
-          className="px-3.5 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Todos os usuários</option>
           {users.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
@@ -81,43 +81,43 @@ export default function LogAtividades() {
         <select
           value={filterProject}
           onChange={(e) => setFilterProject(e.target.value)}
-          className="px-3.5 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Todos os projetos</option>
           {projects.map((p) => <option key={p.id} value={p.id}>{p.titulo}</option>)}
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Data</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Usuário</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600 hidden sm:table-cell">Projeto</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Ação</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600 hidden md:table-cell">Detalhe</th>
+              <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Data</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Usuário</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Projeto</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Ação</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Detalhe</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
               {filtered.length === 0 ? (
-                <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-400">Nenhuma atividade encontrada.</td></tr>
+                <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-400 dark:text-gray-500">Nenhuma atividade encontrada.</td></tr>
               ) : filtered.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
+                <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-5 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
                     {format(new Date(log.criado_em), "dd/MM/yy HH:mm", { locale: ptBR })}
                   </td>
-                  <td className="px-5 py-3 text-gray-700">{log.users?.nome ?? '—'}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{log.users?.nome ?? '—'}</td>
                   <td className="px-5 py-3 hidden sm:table-cell">
                     {log.projects ? (
-                      <Link to={`/projetos/${log.project_id}`} className="text-blue-600 hover:underline">
+                      <Link to={`/projetos/${log.project_id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
                         {log.projects.titulo}
                       </Link>
                     ) : '—'}
                   </td>
-                  <td className="px-5 py-3 text-gray-700">{ACAO_LABEL[log.acao] ?? log.acao}</td>
-                  <td className="px-5 py-3 text-gray-500 hidden md:table-cell">{log.detalhe}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{ACAO_LABEL[log.acao] ?? log.acao}</td>
+                  <td className="px-5 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{log.detalhe}</td>
                 </tr>
               ))}
             </tbody>

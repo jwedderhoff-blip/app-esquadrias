@@ -40,22 +40,22 @@ export default function RelatorioTab({ projectId, project }) {
   return (
     <div className="space-y-6">
       {/* Progresso geral */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h3 className="font-semibold text-gray-800 mb-3">Progresso Geral</h3>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Progresso Geral</h3>
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+          <div className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pctGeral}%` }} />
           </div>
-          <span className="text-sm font-semibold text-gray-700 w-12 text-right">{pctGeral}%</span>
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 w-12 text-right">{pctGeral}%</span>
         </div>
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
           Etapa {currentIdx + 1} de {ETAPAS.length} — {ETAPAS[currentIdx].label}
         </p>
       </div>
 
       {/* Linha do tempo */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h3 className="font-semibold text-gray-800 mb-4">Linha do Tempo</h3>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-4">Linha do Tempo</h3>
         <div className="space-y-3">
           {ETAPAS.map((etapa, i) => {
             const stage = stages.find((s) => s.etapa === etapa.key)
@@ -67,22 +67,22 @@ export default function RelatorioTab({ projectId, project }) {
               <div key={etapa.key} className="flex items-start gap-3">
                 <div className="flex flex-col items-center mt-0.5">
                   <div className={`w-4 h-4 rounded-full flex-shrink-0 ${
-                    done ? 'bg-green-500' : active ? 'bg-blue-500' : 'bg-gray-200'
+                    done ? 'bg-green-500' : active ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'
                   }`} />
                   {i < ETAPAS.length - 1 && (
-                    <div className={`w-0.5 h-6 mt-0.5 ${done ? 'bg-green-300' : 'bg-gray-200'}`} />
+                    <div className={`w-0.5 h-6 mt-0.5 ${done ? 'bg-green-300' : 'bg-gray-200 dark:bg-gray-700'}`} />
                   )}
                 </div>
                 <div className="pb-1">
                   <p className={`text-sm font-medium ${
-                    done ? 'text-green-700' : active ? 'text-blue-700' : 'text-gray-400'
+                    done ? 'text-green-700 dark:text-green-400' : active ? 'text-blue-700 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
                   }`}>
                     {etapa.label}
                     {done && <span className="ml-2 text-xs font-normal text-green-500">✓ Concluída</span>}
                     {active && <span className="ml-2 text-xs font-normal text-blue-500">● Em andamento</span>}
                   </p>
                   {stage && (
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                       Iniciada em {format(new Date(stage.iniciada_em), "dd/MM/yyyy", { locale: ptBR })}
                       {stage.concluida_em && ` · Concluída em ${format(new Date(stage.concluida_em), "dd/MM/yyyy", { locale: ptBR })}`}
                     </p>

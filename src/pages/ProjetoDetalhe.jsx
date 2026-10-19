@@ -67,69 +67,69 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-4">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">Editar projeto</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XMarkIcon className="w-5 h-5" /></button>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg my-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Editar projeto</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><XMarkIcon className="w-5 h-5" /></button>
         </div>
 
         {!confirmando ? (
           <div className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nº orçamento</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nº orçamento</label>
                 <input value={form.numero_orcamento} onChange={set('numero_orcamento')} placeholder="ORC-2024-001"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nº pedido / contrato</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nº pedido / contrato</label>
                 <input value={form.numero_pedido} onChange={set('numero_pedido')} placeholder="PED-2024-001"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Título *</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Título *</label>
               <input value={form.titulo} onChange={set('titulo')} required
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Nome do cliente *</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nome do cliente *</label>
               <input value={form.cliente} onChange={set('cliente')} required
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">CPF / CNPJ</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">CPF / CNPJ</label>
               <input value={form.cliente_cpf_cnpj} onChange={set('cliente_cpf_cnpj')} placeholder="000.000.000-00 ou 00.000.000/0001-00"
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Telefone / WhatsApp</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Telefone / WhatsApp</label>
                 <input type="tel" value={form.cliente_fone} onChange={set('cliente_fone')} placeholder="(11) 99999-9999"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Email do cliente</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email do cliente</label>
                 <input type="email" value={form.cliente_email} onChange={set('cliente_email')}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Pasta no Google Drive (URL)</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Pasta no Google Drive (URL)</label>
               <input type="url" value={form.drive_pasta_url} onChange={set('drive_pasta_url')}
                 placeholder="https://drive.google.com/drive/folders/..."
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <p className="text-xs text-gray-400 mt-0.5">Pasta específica deste projeto no Drive da empresa.</p>
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Pasta específica deste projeto no Drive da empresa.</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Responsável</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Responsável</label>
               <select value={form.criado_por} onChange={set('criado_por')}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={onClose} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
+              <button onClick={onClose} className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">Cancelar</button>
               <button onClick={() => setConfirmando(true)} disabled={diff.length === 0}
                 className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
                 Revisar alterações
@@ -138,18 +138,18 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
           </div>
         ) : (
           <div className="p-6">
-            <p className="text-sm text-gray-600 mb-3">Confirme as alterações nos campos:</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Confirme as alterações nos campos:</p>
             <ul className="mb-5 space-y-1">
               {diff.map((campo) => (
-                <li key={campo} className="flex items-center gap-2 text-sm text-gray-700">
+                <li key={campo} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
                   {campo}
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-gray-400 mb-5">Esta ação será registrada no log do projeto.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">Esta ação será registrada no log do projeto.</p>
             <div className="flex gap-3">
-              <button onClick={() => setConfirmando(false)} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">Voltar</button>
+              <button onClick={() => setConfirmando(false)} className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">Voltar</button>
               <button onClick={handleSave} disabled={loading}
                 className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
                 {loading ? 'Salvando...' : 'Confirmar e salvar'}
@@ -165,23 +165,23 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
 function ModalConfirmarExclusao({ project, onClose, onConfirm, loading }) {
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-            <TrashIcon className="w-5 h-5 text-red-600" />
+          <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+            <TrashIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Excluir projeto</h2>
-            <p className="text-sm text-gray-500">Esta ação não pode ser desfeita.</p>
+            <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Excluir projeto</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Esta ação não pode ser desfeita.</p>
           </div>
         </div>
-        <p className="text-sm text-gray-700 mb-1">Você está prestes a excluir:</p>
-        <p className="text-sm font-semibold text-gray-900 mb-5">"{project.titulo}"</p>
-        <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-5">
+        <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">Você está prestes a excluir:</p>
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-5">"{project.titulo}"</p>
+        <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 mb-5">
           Todos os dados, checklist e documentos deste projeto serão removidos permanentemente.
         </p>
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
+          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">Cancelar</button>
           <button onClick={onConfirm} disabled={loading}
             className="flex-1 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-60 transition">
             {loading ? 'Excluindo...' : 'Excluir projeto'}
@@ -428,30 +428,30 @@ export default function ProjetoDetalhe() {
     <div>
       <button
         onClick={() => navigate('/')}
-        className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
+        className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-6 transition-colors"
       >
         <ArrowLeftIcon className="w-4 h-4" />
         Voltar
       </button>
 
       {/* Header do projeto */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               {project.numero_orcamento && (
-                <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                <span className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
                   ORC: {project.numero_orcamento}
                 </span>
               )}
               {project.numero_pedido && (
-                <span className="text-xs font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                <span className="text-xs font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded">
                   PED: {project.numero_pedido}
                 </span>
               )}
             </div>
-            <h1 className="text-xl font-bold text-gray-900">{project.titulo}</h1>
-            <p className="text-sm text-gray-700 mt-0.5 font-medium">{project.cliente}</p>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{project.titulo}</h1>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 font-medium">{project.cliente}</p>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               {project.cliente_cpf_cnpj && (
                 <span className="text-xs text-gray-500 font-mono">{project.cliente_cpf_cnpj}</span>
@@ -477,7 +477,7 @@ export default function ProjetoDetalhe() {
             </div>
             <div className="flex items-center gap-3 mt-2">
               <EtapaBadge etapa={project.etapa_atual} />
-              <span className="text-xs text-gray-400">Responsável: {project.users?.nome ?? '—'}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">Responsável: {project.users?.nome ?? '—'}</span>
             </div>
           </div>
           <div className="flex flex-col items-end gap-3 flex-shrink-0">
@@ -500,24 +500,24 @@ export default function ProjetoDetalhe() {
                         style={{ transition: 'stroke-dasharray 0.7s ease' }} />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-lg font-bold text-gray-900 leading-none">{pct}%</span>
+                      <span className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-none">{pct}%</span>
                     </div>
                   </div>
-                  <span className="text-[11px] text-gray-400">Progresso</span>
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500">Progresso</span>
                 </div>
               )
             })()}
             <div className="flex items-center gap-2">
               {canEdit && (
                 <button onClick={() => setEditModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                  className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                   <PencilSquareIcon className="w-4 h-4" />
                   Editar
                 </button>
               )}
               {canDelete && (
                 <button onClick={() => setDeleteModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-red-200 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition">
+                  className="flex items-center gap-1.5 px-3 py-2 border border-red-200 dark:border-red-800 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
                   <TrashIcon className="w-4 h-4" />
                 </button>
               )}
@@ -551,10 +551,10 @@ export default function ProjetoDetalhe() {
                 else if (active) cls = 'bg-blue-600 text-white border-blue-600'
                 else cls = 'bg-gray-700 text-white border-gray-700'
               } else {
-                if (isFullyDone) cls = 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                else if (isPartial) cls = 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                else if (active) cls = 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                else cls = 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                if (isFullyDone) cls = 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30'
+                else if (isPartial) cls = 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                else if (active) cls = 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                else cls = 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
               }
 
               const prefix = !selected && isFullyDone ? '✓ ' : !selected && isPartial ? '◐ ' : ''
@@ -569,14 +569,14 @@ export default function ProjetoDetalhe() {
               )
             })}
           </div>
-          <p className="text-xs text-gray-400 mt-3">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
             Etapa atual: <strong>{ETAPAS[currentIdx]?.label}</strong> — toque em qualquer etapa para ver ou preencher
           </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
         <nav className="flex gap-1 overflow-x-auto">
           {TABS.map((t) => (
             <button
@@ -584,8 +584,8 @@ export default function ProjetoDetalhe() {
               onClick={() => setTab(t.key)}
               className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
                 tab === t.key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
               {t.label}
@@ -626,16 +626,16 @@ export default function ProjetoDetalhe() {
       )}
       {advanceModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h2 className="text-base font-bold text-gray-900 mb-2">Avançar etapa</h2>
-            <p className="text-sm text-gray-600 mb-5">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-2">Avançar etapa</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
               Há {checklistItems.filter((i) => !i.concluido).length} item(ns) pendente(s) no checklist.
               Deseja avançar mesmo assim?
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setAdvanceModal(false)}
-                className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+                className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
               >
                 Cancelar
               </button>

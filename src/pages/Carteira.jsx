@@ -53,30 +53,30 @@ export default function Carteira() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Carteira de Projetos</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{rows.length} projeto{rows.length !== 1 ? 's' : ''}</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Carteira de Projetos</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{rows.length} projeto{rows.length !== 1 ? 's' : ''}</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Projeto</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600 hidden sm:table-cell">Cliente</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Etapa</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600 hidden md:table-cell">Checklist</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Dias na etapa</th>
+              <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Projeto</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Cliente</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Etapa</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Checklist</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Dias na etapa</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
               {rows.map((p) => (
                 <tr
                   key={p.id}
-                  className={`transition-colors ${p.diasNaEtapa > 7 ? 'bg-amber-50' : 'hover:bg-gray-50'}`}
+                  className={`transition-colors ${p.diasNaEtapa > 7 ? 'bg-amber-50 dark:bg-amber-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                 >
                   <td className="px-5 py-3.5">
-                    <Link to={`/projetos/${p.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                    <Link to={`/projetos/${p.id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                       {p.titulo}
                     </Link>
                     {p.numero_pedido && (
@@ -86,16 +86,16 @@ export default function Carteira() {
                       <span className="ml-2 text-xs text-amber-600 font-medium">⚠ Parado</span>
                     )}
                   </td>
-                  <td className="px-5 py-3.5 text-gray-600 hidden sm:table-cell">{p.cliente}</td>
+                  <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden sm:table-cell">{p.cliente}</td>
                   <td className="px-5 py-3.5"><EtapaBadge etapa={p.etapa_atual} /></td>
                   <td className="px-5 py-3.5 hidden md:table-cell">
                     {p.checklistTotal > 0 ? (
                       <div className="w-32">
                         <ProgressBar value={p.checklistDone} max={p.checklistTotal} />
                       </div>
-                    ) : <span className="text-gray-400">—</span>}
+                    ) : <span className="text-gray-400 dark:text-gray-500">—</span>}
                   </td>
-                  <td className={`px-5 py-3.5 font-medium ${p.diasNaEtapa > 7 ? 'text-amber-600' : 'text-gray-600'}`}>
+                  <td className={`px-5 py-3.5 font-medium ${p.diasNaEtapa > 7 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-600 dark:text-gray-400'}`}>
                     {p.diasNaEtapa}d
                   </td>
                 </tr>

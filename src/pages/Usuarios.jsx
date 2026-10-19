@@ -59,40 +59,40 @@ function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmi
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-5">{editing ? 'Editar usuário' : 'Novo usuário'}</h2>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5">{editing ? 'Editar usuário' : 'Novo usuário'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome *</label>
             <input value={nome} onChange={(e) => setNome(e.target.value)} required
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           {!editing && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Senha *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha *</label>
                 <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required minLength={6}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Perfil *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Perfil *</label>
             <select value={perfil} onChange={(e) => setPerfil(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
               {PERFIS.map((p) => <option key={p} value={p}>{PERFIL_LABEL[p]}</option>)}
             </select>
           </div>
           {isSuperAdmin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Empresa</label>
               <select value={companyId} onChange={(e) => setCompanyId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Sem empresa</option>
                 {companies.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
@@ -100,12 +100,12 @@ function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmi
           )}
           <div className="flex items-center gap-2">
             <input type="checkbox" id="ativo" checked={ativo} onChange={(e) => setAtivo(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-            <label htmlFor="ativo" className="text-sm text-gray-700">Usuário ativo</label>
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+            <label htmlFor="ativo" className="text-sm text-gray-700 dark:text-gray-300">Usuário ativo</label>
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
-              className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+              className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
               Cancelar
             </button>
             <button type="submit" disabled={loading}
@@ -144,8 +144,8 @@ export default function Usuarios() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{users.length} usuário{users.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Usuários</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{users.length} usuário{users.length !== 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => setModal({})}
@@ -156,40 +156,40 @@ export default function Usuarios() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-left px-5 py-3 font-medium text-gray-600">Nome</th>
-              <th className="text-left px-5 py-3 font-medium text-gray-600 hidden sm:table-cell">Email</th>
-              {isSuperAdmin && <th className="text-left px-5 py-3 font-medium text-gray-600 hidden md:table-cell">Empresa</th>}
-              <th className="text-left px-5 py-3 font-medium text-gray-600">Perfil</th>
-              <th className="text-left px-5 py-3 font-medium text-gray-600">Status</th>
+            <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Nome</th>
+              <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Email</th>
+              {isSuperAdmin && <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Empresa</th>}
+              <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Perfil</th>
+              <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Status</th>
               <th className="px-5 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
             {users.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-5 py-3.5 font-medium text-gray-800">{u.nome}</td>
-                <td className="px-5 py-3.5 text-gray-500 hidden sm:table-cell">{u.email}</td>
+              <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <td className="px-5 py-3.5 font-medium text-gray-800 dark:text-gray-200">{u.nome}</td>
+                <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400 hidden sm:table-cell">{u.email}</td>
                 {isSuperAdmin && (
-                  <td className="px-5 py-3.5 text-gray-500 text-xs hidden md:table-cell">
-                    {u.companies?.nome ?? <span className="text-gray-300">—</span>}
+                  <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400 text-xs hidden md:table-cell">
+                    {u.companies?.nome ?? <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </td>
                 )}
                 <td className="px-5 py-3.5">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                     {PERFIL_LABEL[u.perfil] ?? u.perfil}
                   </span>
                 </td>
                 <td className="px-5 py-3.5">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${u.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${u.ativo ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
                     {u.ativo ? 'Ativo' : 'Inativo'}
                   </span>
                 </td>
                 <td className="px-5 py-3.5 text-right">
-                  <button onClick={() => setModal(u)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Editar">
+                  <button onClick={() => setModal(u)} className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Editar">
                     <PencilSquareIcon className="w-4 h-4" />
                   </button>
                 </td>

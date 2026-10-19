@@ -67,7 +67,7 @@ export default function Projetos() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por título ou cliente..."
-            className="w-full pl-9 pr-3.5 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 pr-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
         <div className="relative">
@@ -75,7 +75,7 @@ export default function Projetos() {
           <select
             value={filterEtapa}
             onChange={(e) => setFilterEtapa(e.target.value)}
-            className="pl-9 pr-8 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none"
+            className="pl-9 pr-8 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none"
           >
             <option value="">Todas as etapas</option>
             {ETAPAS.map((e) => (
@@ -93,33 +93,33 @@ export default function Projetos() {
           <p className="text-sm mt-1">Tente ajustar os filtros ou crie um novo projeto.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Projeto</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600 hidden sm:table-cell">Cliente</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Etapa</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600 hidden md:table-cell">Responsável</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600 hidden lg:table-cell">Atualizado</th>
+              <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Projeto</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Cliente</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Etapa</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Responsável</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">Atualizado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
               {filtered.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   <td className="px-5 py-3.5">
-                    <Link to={`/projetos/${p.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                    <Link to={`/projetos/${p.id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                       {p.titulo}
                     </Link>
                     {p.numero_pedido && (
                       <span className="ml-2 text-xs font-mono text-blue-500">{p.numero_pedido}</span>
                     )}
-                    <p className="text-xs text-gray-400 sm:hidden mt-0.5">{p.cliente}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 sm:hidden mt-0.5">{p.cliente}</p>
                   </td>
-                  <td className="px-5 py-3.5 text-gray-600 hidden sm:table-cell">{p.cliente}</td>
+                  <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden sm:table-cell">{p.cliente}</td>
                   <td className="px-5 py-3.5"><EtapaBadge etapa={p.etapa_atual} /></td>
-                  <td className="px-5 py-3.5 text-gray-600 hidden md:table-cell">{p.users?.nome ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-gray-400 hidden lg:table-cell">
+                  <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden md:table-cell">{p.users?.nome ?? '—'}</td>
+                  <td className="px-5 py-3.5 text-gray-400 dark:text-gray-500 hidden lg:table-cell">
                     {formatDistanceToNow(new Date(p.atualizado_em), { addSuffix: true, locale: ptBR })}
                   </td>
                 </tr>

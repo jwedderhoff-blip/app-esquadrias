@@ -74,28 +74,28 @@ function ModalEmpresa({ empresa, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-4">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">{editing ? 'Editar empresa' : 'Nova empresa'}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XMarkIcon className="w-5 h-5" /></button>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg my-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{editing ? 'Editar empresa' : 'Nova empresa'}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><XMarkIcon className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[75vh]">
 
           {/* Logo */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Logo da empresa</p>
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Logo da empresa</p>
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 flex-shrink-0">
+              <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800 flex-shrink-0">
                 {logoPreview
                   ? <img src={logoPreview} alt="logo" className="w-full h-full object-contain" />
-                  : <BuildingOffice2Icon className="w-8 h-8 text-gray-300" />}
+                  : <BuildingOffice2Icon className="w-8 h-8 text-gray-300 dark:text-gray-600" />}
               </div>
               <div>
                 <button type="button" onClick={() => fileRef.current.click()}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
+                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                   {logoPreview ? 'Trocar logo' : 'Enviar logo'}
                 </button>
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG ou SVG. Máx 2MB.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PNG, JPG ou SVG. Máx 2MB.</p>
                 <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
               </div>
             </div>
@@ -103,46 +103,46 @@ function ModalEmpresa({ empresa, onClose, onSaved }) {
 
           {/* Identificação */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Identificação</p>
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Identificação</p>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome da empresa *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome da empresa *</label>
                 <input value={nome} onChange={(e) => setNome(e.target.value)} required
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Slug (identificador único) *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug (identificador único) *</label>
                 <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} required
                   placeholder="ex: empresa-abc"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="ativo_emp" checked={ativo} onChange={(e) => setAtivo(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                <label htmlFor="ativo_emp" className="text-sm text-gray-700">Empresa ativa</label>
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                <label htmlFor="ativo_emp" className="text-sm text-gray-700 dark:text-gray-300">Empresa ativa</label>
               </div>
             </div>
           </div>
 
           {/* Endereço */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Endereço</p>
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Endereço</p>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Endereço</label>
                 <input value={endereco} onChange={(e) => setEndereco(e.target.value)} placeholder="Rua, número, bairro"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cidade</label>
                   <input value={cidade} onChange={(e) => setCidade(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">UF</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">UF</label>
                   <input value={estado} onChange={(e) => setEstado(e.target.value.toUpperCase().slice(0, 2))} maxLength={2} placeholder="SP"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase" />
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase" />
                 </div>
               </div>
             </div>
@@ -150,30 +150,30 @@ function ModalEmpresa({ empresa, onClose, onSaved }) {
 
           {/* Contato */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contato</p>
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Contato</p>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">WhatsApp</label>
                   <input type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="(11) 99999-9999"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email do responsável</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email do responsável</label>
                   <input type="email" value={emailResp} onChange={(e) => setEmailResp(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Site</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Site</label>
                   <input type="url" value={site} onChange={(e) => setSite(e.target.value)} placeholder="https://..."
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instagram</label>
                   <input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@empresa"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
             </div>
@@ -181,19 +181,19 @@ function ModalEmpresa({ empresa, onClose, onSaved }) {
 
           {/* Integração */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Integração Google Drive</p>
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Integração Google Drive</p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">URL da pasta raiz no Drive</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">URL da pasta raiz no Drive</label>
               <input type="url" value={driveFolderUrl} onChange={(e) => setDriveFolderUrl(e.target.value)}
                 placeholder="https://drive.google.com/drive/folders/..."
-                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <p className="text-xs text-gray-400 mt-1">Pasta onde serão criadas as subpastas de cada projeto.</p>
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Pasta onde serão criadas as subpastas de cada projeto.</p>
             </div>
           </div>
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
-              className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+              className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
               Cancelar
             </button>
             <button type="submit" disabled={loading || uploading}
@@ -239,15 +239,15 @@ function ModalAdminEmpresa({ empresa, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Atribuir admin</h2>
-        <p className="text-sm text-gray-500 mb-5">Empresa: <strong>{empresa.nome}</strong></p>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Atribuir admin</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Empresa: <strong>{empresa.nome}</strong></p>
         <form onSubmit={handleAssign} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Usuário *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuário *</label>
             {loadingUsers ? <Spinner /> : (
               <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} required
-                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Selecione um usuário...</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -257,12 +257,12 @@ function ModalAdminEmpresa({ empresa, onClose, onSaved }) {
               </select>
             )}
           </div>
-          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
             O usuário selecionado será vinculado a esta empresa e terá perfil <strong>administrador</strong>.
           </p>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
-              className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+              className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
               Cancelar
             </button>
             <button type="submit" disabled={loading || loadingUsers}
@@ -299,8 +299,8 @@ export default function Admin() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Empresas</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{companies.length} empresa{companies.length !== 1 ? 's' : ''} cadastrada{companies.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Empresas</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{companies.length} empresa{companies.length !== 1 ? 's' : ''} cadastrada{companies.length !== 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => setModal({})}
@@ -317,34 +317,34 @@ export default function Admin() {
           <p className="text-sm">Nenhuma empresa cadastrada</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Empresa</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600 hidden sm:table-cell">Slug</th>
-                <th className="text-left px-5 py-3 font-medium text-gray-600">Status</th>
+              <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Empresa</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Slug</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Status</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
               {companies.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       {c.logo_url
-                        ? <img src={c.logo_url} alt="" className="w-8 h-8 rounded-lg object-contain border border-gray-100 bg-gray-50" />
-                        : <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><BuildingOffice2Icon className="w-4 h-4 text-gray-400" /></div>
+                        ? <img src={c.logo_url} alt="" className="w-8 h-8 rounded-lg object-contain border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800" />
+                        : <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0"><BuildingOffice2Icon className="w-4 h-4 text-gray-400 dark:text-gray-500" /></div>
                       }
                       <div>
-                        <p className="font-medium text-gray-800">{c.nome}</p>
-                        {c.cidade && <p className="text-xs text-gray-400">{c.cidade}{c.estado ? ` / ${c.estado}` : ''}</p>}
+                        <p className="font-medium text-gray-800 dark:text-gray-200">{c.nome}</p>
+                        {c.cidade && <p className="text-xs text-gray-400 dark:text-gray-500">{c.cidade}{c.estado ? ` / ${c.estado}` : ''}</p>}
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-gray-500 font-mono text-xs hidden sm:table-cell">{c.slug}</td>
+                  <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400 font-mono text-xs hidden sm:table-cell">{c.slug}</td>
                   <td className="px-5 py-3.5">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${c.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${c.ativo ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
                       {c.ativo ? 'Ativa' : 'Inativa'}
                     </span>
                   </td>
@@ -356,21 +356,21 @@ export default function Admin() {
                           navigator.clipboard.writeText(link)
                           toast.success('Link copiado!')
                         }}
-                        className="text-xs text-purple-600 hover:text-purple-800 font-medium transition-colors"
+                        className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-medium transition-colors"
                         title="Copiar link do dashboard público"
                       >
                         📊 Dashboard
                       </button>
                       <button
                         onClick={() => setAdminModal(c)}
-                        className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors"
                         title="Atribuir admin"
                       >
                         Atribuir admin
                       </button>
                       <button
                         onClick={() => setModal(c)}
-                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                         title="Editar"
                       >
                         <PencilSquareIcon className="w-4 h-4" />
