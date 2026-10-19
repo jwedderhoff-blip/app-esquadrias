@@ -204,15 +204,34 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Arquivos de orçamento</p>
           {docs.length > 0 && (
             <div className="space-y-1.5 mb-3">
-              {docs.map((d) => (
-                <div key={d.id} className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
-                  <PaperClipIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                  <a href={d.url_storage} target="_blank" rel="noreferrer"
-                    className="text-xs text-blue-700 hover:underline flex-1 truncate font-medium">
-                    {d.nome_arquivo}
-                  </a>
-                </div>
-              ))}
+              {docs.map((d) => {
+                const isAprovado = values.doc_aprovado_id === d.id
+                return (
+                  <div key={d.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                    isAprovado ? 'bg-green-50 border-green-300' : 'bg-blue-50 border-blue-100'
+                  }`}>
+                    <PaperClipIcon className={`w-4 h-4 flex-shrink-0 ${isAprovado ? 'text-green-500' : 'text-blue-400'}`} />
+                    <a href={d.url_storage} target="_blank" rel="noreferrer"
+                      className={`text-xs hover:underline flex-1 truncate font-medium ${isAprovado ? 'text-green-700' : 'text-blue-700'}`}>
+                      {d.nome_arquivo}
+                    </a>
+                    {isAprovado
+                      ? (
+                        <span className="flex-shrink-0 flex items-center gap-1 text-[11px] font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                          ✓ Aprovado
+                        </span>
+                      )
+                      : (
+                        <button type="button"
+                          onClick={() => set('doc_aprovado_id', d.id)}
+                          className="flex-shrink-0 text-[11px] text-gray-400 hover:text-green-600 hover:bg-green-50 px-2 py-0.5 rounded-full border border-transparent hover:border-green-200 transition-colors">
+                          Marcar aprovado
+                        </button>
+                      )
+                    }
+                  </div>
+                )
+              })}
             </div>
           )}
           <button
