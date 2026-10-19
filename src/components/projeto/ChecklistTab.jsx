@@ -488,8 +488,8 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
     if (fields?.length && !item.concluido) {
       setDadosModal(item); return
     }
-    // Desmarcar item simples (sem campos)
-    if (item.concluido && !fields?.length && !item.requer_documento) {
+    // Toggle item simples (sem campos e sem documento)
+    if (!fields?.length && !item.requer_documento) {
       toggleSimple(item)
     }
   }
