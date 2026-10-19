@@ -7,6 +7,7 @@ import {
   XMarkIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid'
 import { supabase } from '../../lib/supabase'
@@ -141,6 +142,9 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
   const [values, setValues] = useState(item.dados || {})
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteJust, setDeleteJust] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     supabase.from('documents').select('*')
@@ -150,6 +154,12 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
   }, [])
 
   function set(key, val) { setValues((v) => ({ ...v, [key]: val })) }
+
+  function toggleAprovado(id) {
+    const current = values.doc_aprovados_ids || []
+    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
+    set('doc_aprovados_ids', next)
+  }
 
   async function handleFileAdd(e) {
     const file = e.target.files?.[0]
@@ -170,6 +180,23 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
     setUploading(false)
   }
 
+  async function handleDocDelete() {
+    if (!deleteJust.trim()) { toast.error('Informe a justificativa.'); return }
+    setDeleting(true)
+    await supabase.from('documents').delete().eq('id', deleteTarget.id)
+    await supabase.from('activity_log').insert({
+      project_id: projectId, usuario_id: session.user.id,
+      acao: 'documento_excluido',
+      detalhe: `Orçamento "${deleteTarget.nome_arquivo}" excluído. Justificativa: ${deleteJust.trim()}`,
+    })
+    // Remove do array de aprovados se estava lá
+    const aprovados = (values.doc_aprovados_ids || []).filter((x) => x !== deleteTarget.id)
+    set('doc_aprovados_ids', aprovados)
+    setDocs((prev) => prev.filter((d) => d.id !== deleteTarget.id))
+    setDeleteTarget(null); setDeleteJust(''); setDeleting(false)
+    toast.success('Documento excluído.')
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setSaving(true)
@@ -185,6 +212,9 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
   }
 
   const base = 'w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const aprovadosIds = values.doc_aprovados_ids || []
+  const aprovados = docs.filter((d) => aprovadosIds.includes(d.id))
+  const outros = docs.filter((d) => !aprovadosIds.includes(d.id))
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -192,7 +222,7 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
         <div className="flex items-start justify-between mb-5">
           <div>
             <h2 className="text-base font-bold text-gray-900">Orçamentos realizados</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Anexe os orçamentos e registre o aprovado</p>
+            <p className="text-xs text-gray-500 mt-0.5">Anexe os orçamentos e registre os aprovados</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-4 flex-shrink-0">
             <XMarkIcon className="w-5 h-5" />
@@ -201,61 +231,111 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
 
         {/* Arquivos enviados */}
         <div className="mb-5">
-          {docs.length > 0 && (() => {
-            const aprovado = docs.find((d) => d.id === values.doc_aprovado_id)
-            const outros = docs.filter((d) => d.id !== values.doc_aprovado_id)
-            return (
-              <div className="space-y-3 mb-3">
-                {/* Orçamento aprovado em destaque */}
-                {aprovado ? (
-                  <div>
-                    <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1.5">Orçamento aprovado</p>
-                    <a href={aprovado.url_storage} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-3 px-4 py-3 bg-green-50 border-2 border-green-400 rounded-xl hover:bg-green-100 transition-colors group">
-                      <div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
-                        <PaperClipIcon className="w-4 h-4 text-white" />
-                      </div>
-                      <span className="text-sm font-semibold text-green-800 truncate flex-1 group-hover:underline">
-                        {aprovado.nome_arquivo}
-                      </span>
-                      <span className="flex-shrink-0 text-[11px] font-bold text-green-700 bg-green-200 px-2 py-0.5 rounded-full">
-                        ✓ APROVADO
-                      </span>
-                    </a>
-                  </div>
-                ) : (
-                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    Selecione qual orçamento foi aprovado clicando em "Marcar aprovado"
+          {docs.length > 0 && (
+            <div className="space-y-3 mb-3">
+              {/* Orçamentos aprovados */}
+              {aprovados.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1.5">
+                    Orçamentos aprovados ({aprovados.length})
                   </p>
-                )}
+                  <div className="space-y-1.5">
+                    {aprovados.map((d) => (
+                      <div key={d.id}>
+                        <div className="flex items-center gap-2 px-3 py-2.5 bg-green-50 border-2 border-green-300 rounded-xl">
+                          <div className="w-6 h-6 rounded bg-green-500 flex items-center justify-center flex-shrink-0">
+                            <PaperClipIcon className="w-3.5 h-3.5 text-white" />
+                          </div>
+                          <a href={d.url_storage} target="_blank" rel="noreferrer"
+                            className="text-xs font-semibold text-green-800 hover:underline flex-1 truncate">
+                            {d.nome_arquivo}
+                          </a>
+                          <span className="text-[10px] font-bold text-green-700 bg-green-200 px-1.5 py-0.5 rounded-full flex-shrink-0">✓</span>
+                          <button type="button" onClick={() => toggleAprovado(d.id)}
+                            className="text-[10px] text-green-600 hover:text-gray-500 flex-shrink-0 underline">
+                            remover
+                          </button>
+                          <button type="button" onClick={() => { setDeleteTarget(d); setDeleteJust('') }}
+                            className="text-gray-300 hover:text-red-500 flex-shrink-0 transition-colors">
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {deleteTarget?.id === d.id && (
+                          <div className="mt-1 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-xs font-medium text-red-700 mb-1">Justificativa da exclusão *</p>
+                            <textarea rows={2} value={deleteJust} onChange={(e) => setDeleteJust(e.target.value)}
+                              placeholder="Motivo da exclusão..." autoFocus
+                              className="w-full px-2 py-1.5 text-xs rounded border border-red-300 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none mb-2" />
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => setDeleteTarget(null)}
+                                className="flex-1 py-1 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50">Cancelar</button>
+                              <button type="button" onClick={handleDocDelete} disabled={deleting || !deleteJust.trim()}
+                                className="flex-1 py-1 text-xs bg-red-600 text-white rounded font-medium hover:bg-red-700 disabled:opacity-50">
+                                {deleting ? 'Excluindo...' : 'Excluir'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                {/* Demais arquivos para consulta */}
-                {outros.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
-                      Arquivos para consulta ({outros.length})
-                    </p>
-                    <div className="space-y-1">
-                      {outros.map((d) => (
-                        <div key={d.id} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg">
+              {/* Sem aprovados ainda */}
+              {aprovados.length === 0 && docs.length > 0 && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Marque os orçamentos aprovados para este projeto
+                </p>
+              )}
+
+              {/* Demais arquivos para consulta */}
+              {outros.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                    Arquivos para consulta ({outros.length})
+                  </p>
+                  <div className="space-y-1">
+                    {outros.map((d) => (
+                      <div key={d.id}>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg">
                           <PaperClipIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                           <a href={d.url_storage} target="_blank" rel="noreferrer"
                             className="text-xs text-gray-500 hover:text-gray-800 hover:underline flex-1 truncate">
                             {d.nome_arquivo}
                           </a>
-                          <button type="button"
-                            onClick={() => set('doc_aprovado_id', d.id)}
+                          <button type="button" onClick={() => toggleAprovado(d.id)}
                             className="flex-shrink-0 text-[11px] text-gray-400 hover:text-green-600 px-2 py-0.5 rounded border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors">
                             Marcar aprovado
                           </button>
+                          <button type="button" onClick={() => { setDeleteTarget(d); setDeleteJust('') }}
+                            className="text-gray-300 hover:text-red-500 flex-shrink-0 transition-colors">
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                      ))}
-                    </div>
+                        {deleteTarget?.id === d.id && (
+                          <div className="mt-1 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-xs font-medium text-red-700 mb-1">Justificativa da exclusão *</p>
+                            <textarea rows={2} value={deleteJust} onChange={(e) => setDeleteJust(e.target.value)}
+                              placeholder="Motivo da exclusão..." autoFocus
+                              className="w-full px-2 py-1.5 text-xs rounded border border-red-300 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none mb-2" />
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => setDeleteTarget(null)}
+                                className="flex-1 py-1 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50">Cancelar</button>
+                              <button type="button" onClick={handleDocDelete} disabled={deleting || !deleteJust.trim()}
+                                className="flex-1 py-1 text-xs bg-red-600 text-white rounded font-medium hover:bg-red-700 disabled:opacity-50">
+                                {deleting ? 'Excluindo...' : 'Excluir'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            )
-          })()}
+                </div>
+              )}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
