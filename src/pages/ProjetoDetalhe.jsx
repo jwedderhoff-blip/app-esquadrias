@@ -206,6 +206,7 @@ export default function ProjetoDetalhe() {
   const navigate = useNavigate()
   const [project, setProject] = useState(null)
   const [checklistItems, setChecklistItems] = useState([])
+  const [selectedEtapa, setSelectedEtapa] = useState(null)
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [advancing, setAdvancing] = useState(false)
@@ -225,26 +226,65 @@ export default function ProjetoDetalhe() {
       .eq('id', id)
       .single()
     setProject(data)
+    return data
+  }
+
+  async function loadStageChecklist(etapa) {
+    setSelectedEtapa(etapa)
+    const { data: existing } = await supabase
+      .from('checklist_items')
+      .select('*')
+      .eq('project_id', id)
+      .eq('etapa', etapa)
+      .order('id')
+
+    if (existing?.length) {
+      setChecklistItems(existing)
+      return
+    }
+
+    // Etapa ainda não iniciada — cria itens a partir dos templates
+    const { data: templates } = await supabase
+      .from('checklist_templates')
+      .select('*')
+      .eq('etapa', etapa)
+      .order('ordem')
+
+    if (templates?.length) {
+      const { data: inserted } = await supabase
+        .from('checklist_items')
+        .insert(templates.map((t) => ({
+          project_id: id,
+          etapa,
+          descricao: t.descricao,
+          requer_documento: t.requer_documento ?? false,
+        })))
+        .select()
+      setChecklistItems(inserted || [])
+    } else {
+      setChecklistItems([])
+    }
   }
 
   async function fetchChecklist() {
+    const etapa = selectedEtapa ?? project?.etapa_atual
+    if (!etapa) return
     const { data } = await supabase
       .from('checklist_items')
       .select('*')
       .eq('project_id', id)
-      .eq('etapa', project?.etapa_atual ?? '')
+      .eq('etapa', etapa)
       .order('id')
     setChecklistItems(data || [])
   }
 
   useEffect(() => {
-    fetchProject().then(() => setLoading(false))
+    fetchProject().then((p) => {
+      if (p) loadStageChecklist(p.etapa_atual)
+      setLoading(false)
+    })
     supabase.from('users').select('id, nome').eq('ativo', true).order('nome').then(({ data }) => setUsuarios(data || []))
   }, [id])
-
-  useEffect(() => {
-    if (project) fetchChecklist()
-  }, [project?.etapa_atual])
 
   async function handleDelete() {
     setDeleting(true)
@@ -367,6 +407,7 @@ export default function ProjetoDetalhe() {
 
   const currentIdx = ETAPA_INDEX[project.etapa_atual]
   const isLast = currentIdx >= ETAPAS.length - 1
+  const viewingCurrentEtapa = (selectedEtapa ?? project.etapa_atual) === project.etapa_atual
   const allDone = checklistItems.length > 0 && checklistItems.every((i) => i.concluido)
 
   return (
@@ -451,29 +492,39 @@ export default function ProjetoDetalhe() {
           </div>
         </div>
 
-        {/* Barra de progresso de etapas */}
-        <div className="mt-5">
-          <div className="flex items-center gap-1">
+        {/* Seletor de etapas clicável */}
+        <div className="mt-5 overflow-x-auto">
+          <div className="flex gap-1.5 min-w-max pb-1">
             {ETAPAS.map((etapa, i) => {
               const done = i < currentIdx
-              const active = i === currentIdx
+              const active = etapa.key === project.etapa_atual
+              const selected = etapa.key === selectedEtapa
               return (
-                <div key={etapa.key} className="flex items-center flex-1 min-w-0">
-                  <div
-                    title={etapa.label}
-                    className={`h-2 rounded-full w-full transition-all ${
-                      done ? 'bg-green-500' : active ? 'bg-blue-500' : 'bg-gray-200'
-                    }`}
-                  />
-                  {i < ETAPAS.length - 1 && <div className="w-1 flex-shrink-0" />}
-                </div>
+                <button
+                  key={etapa.key}
+                  onClick={() => { setTab('etapas'); loadStageChecklist(etapa.key) }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border ${
+                    selected
+                      ? active
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : done
+                          ? 'bg-green-600 text-white border-green-600'
+                          : 'bg-gray-700 text-white border-gray-700'
+                      : done
+                        ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                        : active
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                          : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  {done && !selected ? '✓ ' : ''}{etapa.label}
+                </button>
               )
             })}
           </div>
-          <div className="flex justify-between mt-1.5">
-            <span className="text-xs text-gray-400">Etapa {currentIdx + 1} de {ETAPAS.length}</span>
-            <span className="text-xs text-gray-400">{Math.round((currentIdx / (ETAPAS.length - 1)) * 100)}% concluído</span>
-          </div>
+          <p className="text-xs text-gray-400 mt-1.5">
+            Etapa atual: <strong>{ETAPAS[currentIdx]?.label}</strong> — toque em qualquer etapa para ver ou preencher
+          </p>
         </div>
       </div>
 
@@ -499,10 +550,11 @@ export default function ProjetoDetalhe() {
       {tab === 'etapas' && (
         <ChecklistTab
           projectId={id}
-          etapa={project.etapa_atual}
+          etapa={selectedEtapa ?? project.etapa_atual}
           items={checklistItems}
           onUpdate={fetchChecklist}
           project={project}
+          isCurrentEtapa={(selectedEtapa ?? project.etapa_atual) === project.etapa_atual}
         />
       )}
       {tab === 'documentos' && (
