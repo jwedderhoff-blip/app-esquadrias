@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { PlusIcon, PencilSquareIcon, BuildingOffice2Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilSquareIcon, BuildingOffice2Icon, XMarkIcon, LinkIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { PERFIL_LABEL } from '../lib/constants'
 import Spinner from '../components/ui/Spinner'
@@ -178,6 +178,31 @@ function ModalEmpresa({ empresa, onClose, onSaved }) {
               </div>
             </div>
           </div>
+
+          {/* Dashboard público */}
+          {editing && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Dashboard público</p>
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2.5 border border-gray-200 dark:border-gray-700">
+                <LinkIcon className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                <span className="text-xs text-gray-600 dark:text-gray-300 font-mono truncate flex-1 select-all">
+                  {`${window.location.origin}/dashboard/${empresa.id}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/dashboard/${empresa.id}`)
+                    toast.success('Link copiado!')
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-600 text-white rounded-md text-xs font-semibold hover:bg-purple-700 transition flex-shrink-0"
+                >
+                  <ClipboardDocumentIcon className="w-3.5 h-3.5" />
+                  Copiar
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Compartilhe este link para que clientes visualizem o andamento dos projetos.</p>
+            </div>
+          )}
 
           {/* Integração */}
           <div>
