@@ -1,6 +1,7 @@
-import { SunIcon, MoonIcon, ComputerDesktopIcon, BellIcon, BellSlashIcon } from '@heroicons/react/24/outline'
+import { SunIcon, MoonIcon, ComputerDesktopIcon, BellIcon, BellSlashIcon, LinkIcon, ClipboardDocumentIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { CheckIcon } from '@heroicons/react/24/solid'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
 function Toggle({ checked, onChange }) {
@@ -30,6 +31,9 @@ const THEMES = [
 
 export default function Configuracoes() {
   const { theme, setTheme, notifBrowser, setNotifBrowser, notifInApp, setNotifInApp } = useTheme()
+  const { effectiveCompanyId } = useAuth()
+  const companyId = effectiveCompanyId()
+  const dashboardUrl = companyId ? `${window.location.origin}/dashboard/${companyId}` : null
 
   async function handleToggleBrowser(val) {
     if (val) {
@@ -137,6 +141,45 @@ export default function Configuracoes() {
           </div>
         </div>
       </section>
+
+      {/* Dashboard público */}
+      {dashboardUrl && (
+        <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/50">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Dashboard público</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Compartilhe o acompanhamento de projetos com clientes</p>
+          </div>
+          <div className="px-6 py-5 space-y-3">
+            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3.5 py-3 border border-gray-200 dark:border-gray-700">
+              <LinkIcon className="w-4 h-4 text-purple-500 flex-shrink-0" />
+              <span className="text-xs text-gray-700 dark:text-gray-300 font-mono truncate flex-1 select-all">
+                {dashboardUrl}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(dashboardUrl)
+                  toast.success('Link copiado!')
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition"
+              >
+                <ClipboardDocumentIcon className="w-4 h-4" />
+                Copiar link
+              </button>
+              <a
+                href={dashboardUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              >
+                <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                Abrir
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Sobre */}
       <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
