@@ -35,6 +35,23 @@ function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmi
       if (isSuperAdmin) update.company_id = companyId || null
       const { error } = await supabase.from('users').update(update).eq('id', usuario.id)
       if (error) { toast.error('Erro ao atualizar usuário.'); setLoading(false); return }
+
+      // Redefinir senha se informada
+      if (senha.trim()) {
+        const { data: { session } } = await supabase.auth.getSession()
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ user_id: usuario.id, new_password: senha.trim() }),
+        })
+        const result = await res.json()
+        if (!res.ok) { toast.error('Senha não atualizada: ' + (result.error || res.statusText)); setLoading(false); return }
+      }
+
       toast.success('Usuário atualizado!')
     } else {
       const { data: { session } } = await supabase.auth.getSession()
@@ -67,7 +84,7 @@ function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmi
             <input value={nome} onChange={(e) => setNome(e.target.value)} required
               className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          {!editing && (
+          {!editing ? (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
@@ -80,6 +97,15 @@ function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmi
                   className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Nova senha <span className="text-gray-400 font-normal">(opcional — deixe em branco para manter)</span>
+              </label>
+              <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} minLength={6}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
           )}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Perfil *</label>
