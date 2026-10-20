@@ -785,11 +785,18 @@ function ModalContrato({ items, projectId, etapa, project, onClose, onDone }) {
 
   useEffect(() => {
     if (!itemAnexo) return
-    supabase.from('documents').select('*')
-      .eq('checklist_item_id', itemAnexo.id)
-      .order('enviado_em', { ascending: false })
-      .limit(1)
-      .then(({ data }) => setExistingDoc(data?.[0] ?? null))
+    async function loadDoc() {
+      const { data: d1 } = await supabase.from('documents').select('*')
+        .eq('checklist_item_id', itemAnexo.id)
+        .order('enviado_em', { ascending: false }).limit(1)
+      if (d1?.[0]) { setExistingDoc(d1[0]); return }
+      // Fallback: documentos antigos sem checklist_item_id
+      const { data: d2 } = await supabase.from('documents').select('*')
+        .eq('project_id', projectId).eq('etapa', etapa)
+        .order('enviado_em', { ascending: false }).limit(1)
+      setExistingDoc(d2?.[0] ?? null)
+    }
+    loadDoc()
   }, [])
 
   async function handleSubmit(e) {
@@ -1111,6 +1118,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   const [pedidoModal, setPedidoModal] = useState(false)
   const [users, setUsers] = useState([])
   const [contratoDocUrl, setContratoDocUrl] = useState(null)
+  const [contratoDocLoading, setContratoDocLoading] = useState(false)
 
   const done = items.filter((i) => i.concluido).length
   const total = items.length
@@ -1128,31 +1136,25 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
     const fromDados = itemAnexoCard?.dados?.url_storage
     if (fromDados) { setContratoDocUrl(fromDados); return }
     if (!itemAnexoCard?.concluido) return
-    supabase.from('documents').select('url_storage')
-      .eq('checklist_item_id', itemAnexoCard.id)
-      .order('enviado_em', { ascending: false })
-      .limit(1)
-      .then(({ data }) => { if (data?.[0]?.url_storage) setContratoDocUrl(data[0].url_storage) })
+    setContratoDocLoading(true)
+    async function load() {
+      let url = null
+      const { data: d1 } = await supabase.from('documents').select('url_storage')
+        .eq('checklist_item_id', itemAnexoCard.id)
+        .order('enviado_em', { ascending: false }).limit(1)
+      url = d1?.[0]?.url_storage ?? null
+      // Fallback: documentos antigos sem checklist_item_id
+      if (!url) {
+        const { data: d2 } = await supabase.from('documents').select('url_storage')
+          .eq('project_id', projectId).eq('etapa', etapa)
+          .order('enviado_em', { ascending: false }).limit(1)
+        url = d2?.[0]?.url_storage ?? null
+      }
+      setContratoDocUrl(url)
+      setContratoDocLoading(false)
+    }
+    load()
   }, [itemAnexoCard?.id, itemAnexoCard?.concluido])
-
-  // Abre o PDF diretamente, mesmo se contratoDocUrl ainda não carregou (evita popup blocker)
-  function abrirContrato() {
-    if (contratoDocUrl) { window.open(contratoDocUrl, '_blank'); return }
-    // Abre a janela sincronamente (não bloqueada pelo browser) e navega depois
-    const win = window.open('', '_blank')
-    const fromDados = itemAnexoCard?.dados?.url_storage
-    if (fromDados) { if (win) win.location.href = fromDados; setContratoDocUrl(fromDados); return }
-    if (!itemAnexoCard?.id) { if (win) win.close(); setContratoModal(true); return }
-    supabase.from('documents').select('url_storage')
-      .eq('checklist_item_id', itemAnexoCard.id)
-      .order('enviado_em', { ascending: false })
-      .limit(1)
-      .then(({ data }) => {
-        const url = data?.[0]?.url_storage
-        if (url) { setContratoDocUrl(url); if (win) win.location.href = url }
-        else { if (win) win.close(); setContratoModal(true) }
-      })
-  }
 
   // Pedido items grouped
   const pedidoItems = items.filter((i) => PEDIDO_DESCS.includes(i.descricao))
@@ -1372,14 +1374,30 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                         {itemAnexoCard?.concluido && (
                           <div className="flex gap-2 text-xs items-center">
                             <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Arquivo:</span>
-                            <button
-                              type="button"
-                              onClick={abrirContrato}
-                              className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
-                            >
-                              <PaperClipIcon className="w-3 h-3" />
-                              Ver contrato
-                            </button>
+                            {contratoDocLoading ? (
+                              <span className="text-gray-400 dark:text-gray-500 flex items-center gap-1 italic">
+                                carregando...
+                              </span>
+                            ) : contratoDocUrl ? (
+                              <a
+                                href={contratoDocUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
+                              >
+                                <PaperClipIcon className="w-3 h-3" />
+                                Ver contrato
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setContratoModal(true)}
+                                className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
+                              >
+                                <PaperClipIcon className="w-3 h-3" />
+                                Ver contrato
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
