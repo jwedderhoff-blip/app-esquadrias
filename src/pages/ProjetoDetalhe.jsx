@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, PencilSquareIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, EllipsisVerticalIcon, PencilSquareIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ETAPAS, ETAPA_INDEX } from '../lib/constants'
@@ -212,6 +212,7 @@ export default function ProjetoDetalhe() {
   const [tab, setTab] = useState('etapas')
   const [editModal, setEditModal] = useState(false)
   const [deleteModal, setDeleteModal] = useState(false)
+  const [actionMenu, setActionMenu] = useState(false)
   const [advanceModal, setAdvanceModal] = useState(false)
   const [stageStats, setStageStats] = useState({})
 
@@ -508,18 +509,42 @@ export default function ProjetoDetalhe() {
               )
             })()}
             <div className="flex items-center gap-2">
-              {canEdit && (
-                <button onClick={() => setEditModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                  <PencilSquareIcon className="w-4 h-4" />
-                  Editar
-                </button>
-              )}
-              {canDelete && (
-                <button onClick={() => setDeleteModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-red-200 dark:border-red-800 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-                  <TrashIcon className="w-4 h-4" />
-                </button>
+              {(canEdit || canDelete) && (
+                <div className="relative">
+                  <button
+                    onClick={() => setActionMenu((v) => !v)}
+                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                    title="Mais ações"
+                  >
+                    <EllipsisVerticalIcon className="w-5 h-5" />
+                  </button>
+                  {actionMenu && (
+                    <>
+                      {/* backdrop para fechar ao clicar fora */}
+                      <div className="fixed inset-0 z-10" onClick={() => setActionMenu(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 min-w-[140px]">
+                        {canEdit && (
+                          <button
+                            onClick={() => { setActionMenu(false); setEditModal(true) }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                          >
+                            <PencilSquareIcon className="w-4 h-4" />
+                            Editar
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => { setActionMenu(false); setDeleteModal(true) }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                            Excluir
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
               {!isLast && (
                 <button
