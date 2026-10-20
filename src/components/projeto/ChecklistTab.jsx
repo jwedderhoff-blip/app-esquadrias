@@ -778,6 +778,9 @@ function ModalContrato({ items, projectId, etapa, project, onClose, onDone }) {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  // URL já salva no item (acesso direto sem query extra)
+  const savedUrl = itemAnexo?.dados?.url_storage ?? null
+
   const base = 'w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
   useEffect(() => {
@@ -794,6 +797,7 @@ function ModalContrato({ items, projectId, etapa, project, onClose, onDone }) {
     if (!existingDoc && !file) { toast.error('Selecione o arquivo do contrato.'); return }
     setSaving(true)
     const now = new Date().toISOString()
+    let contratoUploadedUrl = null
 
     if (file) {
       setUploading(true)
@@ -802,6 +806,7 @@ function ModalContrato({ items, projectId, etapa, project, onClose, onDone }) {
       const { error: upErr } = await supabase.storage.from('documents').upload(path, file, { upsert: false })
       if (upErr) { toast.error('Erro ao enviar: ' + upErr.message); setSaving(false); setUploading(false); return }
       const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
+      contratoUploadedUrl = publicUrl
       const { data: newDocC } = await supabase.from('documents').insert({
         project_id: projectId, etapa,
         nome_arquivo: file.name, url_storage: publicUrl,
@@ -814,6 +819,7 @@ function ModalContrato({ items, projectId, etapa, project, onClose, onDone }) {
     const updates = []
     if (itemAnexo) {
       updates.push(supabase.from('checklist_items').update({
+        dados: { url_storage: contratoUploadedUrl || existingDoc?.url_storage || null },
         concluido: true, concluido_por: session.user.id, concluido_em: now,
       }).eq('id', itemAnexo.id))
     }
@@ -850,6 +856,19 @@ function ModalContrato({ items, projectId, etapa, project, onClose, onDone }) {
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Acesso rápido ao arquivo quando já existe */}
+        {(savedUrl || existingDoc?.url_storage) && (
+          <a
+            href={savedUrl || existingDoc.url_storage}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 px-4 py-3 mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-xl text-sm font-semibold text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition"
+          >
+            <PaperClipIcon className="w-4 h-4 flex-shrink-0" />
+            Abrir contrato anexado
+          </a>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -1321,14 +1340,26 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                         {itemAnexoCard?.concluido && (
                           <div className="flex gap-2 text-xs items-center">
                             <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Arquivo:</span>
-                            <button
-                              type="button"
-                              onClick={() => setContratoModal(true)}
-                              className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
-                            >
-                              <PaperClipIcon className="w-3 h-3" />
-                              Ver contrato
-                            </button>
+                            {itemAnexoCard?.dados?.url_storage ? (
+                              <a
+                                href={itemAnexoCard.dados.url_storage}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
+                              >
+                                <PaperClipIcon className="w-3 h-3" />
+                                Ver contrato
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setContratoModal(true)}
+                                className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
+                              >
+                                <PaperClipIcon className="w-3 h-3" />
+                                Ver contrato
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
