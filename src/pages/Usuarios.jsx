@@ -148,6 +148,7 @@ function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmi
 export default function Usuarios() {
   const { profile, effectiveCompanyId } = useAuth()
   const isSuperAdmin = profile?.perfil === 'super_admin'
+  const canCreateUsers = isSuperAdmin || profile?.perfil === 'administrador'
   const companyId = effectiveCompanyId()
   const [users, setUsers] = useState([])
   const [companies, setCompanies] = useState([])
@@ -173,13 +174,15 @@ export default function Usuarios() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Usuários</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{users.length} usuário{users.length !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => setModal({})}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Novo usuário
-        </button>
+        {canCreateUsers && (
+          <button
+            onClick={() => setModal({})}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Novo usuário
+          </button>
+        )}
       </div>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -225,7 +228,7 @@ export default function Usuarios() {
         </table>
       </div>
 
-      {modal !== null && (
+      {modal !== null && canCreateUsers && (
         <ModalUsuario
           usuario={modal?.id ? modal : null}
           onClose={() => setModal(null)}
