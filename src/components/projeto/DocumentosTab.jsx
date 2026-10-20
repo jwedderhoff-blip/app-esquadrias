@@ -3,6 +3,7 @@ import { ArrowUpTrayIcon, DocumentIcon, ArrowDownTrayIcon, TrashIcon, XMarkIcon 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { ETAPAS, ETAPA_LABEL } from '../../lib/constants'
+import { syncToDrive } from '../../lib/syncDrive'
 import Spinner from '../ui/Spinner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -70,13 +71,26 @@ export default function DocumentosTab({ projectId, etapa, project }) {
 
     const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
 
-    await supabase.from('documents').insert({
+    const { data: newDoc } = await supabase.from('documents').insert({
       project_id: projectId,
       etapa: filterEtapa,
       nome_arquivo: file.name,
       url_storage: publicUrl,
       enviado_por: session.user.id,
-    })
+    }).select('id').single()
+
+    // Espelhar no Drive (assíncrono, não bloqueia)
+    if (newDoc) {
+      syncToDrive({
+        documentId: newDoc.id,
+        urlStorage: publicUrl,
+        fileName: file.name,
+        mimeType: file.type,
+        companyId: project?.company_id,
+        projectTitulo: project?.titulo,
+        etapa: filterEtapa,
+      })
+    }
 
     // Log
     await supabase.from('activity_log').insert({

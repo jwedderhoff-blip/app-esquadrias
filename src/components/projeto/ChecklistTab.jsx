@@ -14,10 +14,11 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { ETAPA_LABEL } from '../../lib/constants'
 import { CHECKLIST_FIELDS, CHECKLIST_COPY_FROM_PROJECT } from '../../lib/checklistFields'
+import { syncToDrive } from '../../lib/syncDrive'
 import toast from 'react-hot-toast'
 
 // ── Modal de upload de documento obrigatório ──────────────────
-function ModalAnexo({ item, projectId, etapa, onClose, onDone }) {
+function ModalAnexo({ item, projectId, etapa, project, onClose, onDone }) {
   const { session } = useAuth()
   const fileRef = useRef(null)
   const [file, setFile] = useState(null)
@@ -39,11 +40,13 @@ function ModalAnexo({ item, projectId, etapa, onClose, onDone }) {
 
     const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
 
-    await supabase.from('documents').insert({
+    const { data: newDoc } = await supabase.from('documents').insert({
       project_id: projectId, etapa,
       nome_arquivo: file.name, url_storage: publicUrl,
       enviado_por: session.user.id, checklist_item_id: item.id,
-    })
+    }).select('id').single()
+
+    if (newDoc) syncToDrive({ documentId: newDoc.id, urlStorage: publicUrl, fileName: file.name, mimeType: file.type, companyId: project?.company_id, projectTitulo: project?.titulo, etapa })
 
     const now = new Date().toISOString()
     await supabase.from('checklist_items').update({
@@ -150,7 +153,7 @@ function Field({ field, value, onChange, users }) {
 }
 
 // ── Modal de orçamentos (múltiplos arquivos + formulário) ─────
-function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
+function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
   const { session } = useAuth()
   const fileRef = useRef(null)
   const [docs, setDocs] = useState([])
@@ -190,6 +193,7 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
       nome_arquivo: file.name, url_storage: publicUrl,
       enviado_por: session.user.id, checklist_item_id: item.id,
     }).select().single()
+    if (doc) syncToDrive({ documentId: doc.id, urlStorage: publicUrl, fileName: file.name, mimeType: file.type, companyId: project?.company_id, projectTitulo: project?.titulo, etapa })
     setDocs((prev) => [...prev, doc])
     e.target.value = ''
     setUploading(false)
@@ -525,11 +529,12 @@ function ModalPedido({ items, projectId, etapa, project, onClose, onDone }) {
       const { error: upErr } = await supabase.storage.from('documents').upload(path, file, { upsert: false })
       if (upErr) { toast.error('Erro ao enviar: ' + upErr.message); setSaving(false); setUploading(false); return }
       const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
-      await supabase.from('documents').insert({
+      const { data: newDocP } = await supabase.from('documents').insert({
         project_id: projectId, etapa,
         nome_arquivo: file.name, url_storage: publicUrl,
         enviado_por: session.user.id, checklist_item_id: itemDescricao.id,
-      })
+      }).select('id').single()
+      if (newDocP) syncToDrive({ documentId: newDocP.id, urlStorage: publicUrl, fileName: file.name, mimeType: file.type, companyId: project?.company_id, projectTitulo: project?.titulo, etapa })
       setUploading(false)
     }
 
@@ -676,7 +681,7 @@ function ModalPedido({ items, projectId, etapa, project, onClose, onDone }) {
 }
 
 // ── Modal de contrato unificado ──────────────────────────────
-function ModalContrato({ items, projectId, etapa, onClose, onDone }) {
+function ModalContrato({ items, projectId, etapa, project, onClose, onDone }) {
   const { session } = useAuth()
   const fileRef = useRef(null)
 
@@ -715,11 +720,12 @@ function ModalContrato({ items, projectId, etapa, onClose, onDone }) {
       const { error: upErr } = await supabase.storage.from('documents').upload(path, file, { upsert: false })
       if (upErr) { toast.error('Erro ao enviar: ' + upErr.message); setSaving(false); setUploading(false); return }
       const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
-      await supabase.from('documents').insert({
+      const { data: newDocC } = await supabase.from('documents').insert({
         project_id: projectId, etapa,
         nome_arquivo: file.name, url_storage: publicUrl,
         enviado_por: session.user.id, checklist_item_id: itemAnexo.id,
-      })
+      }).select('id').single()
+      if (newDocC) syncToDrive({ documentId: newDocC.id, urlStorage: publicUrl, fileName: file.name, mimeType: file.type, companyId: project?.company_id, projectTitulo: project?.titulo, etapa })
       setUploading(false)
     }
 
@@ -1407,11 +1413,11 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
       )}
 
       {orcamentosModal && (
-        <ModalOrcamentos item={orcamentosModal} projectId={projectId} etapa={etapa}
+        <ModalOrcamentos item={orcamentosModal} projectId={projectId} etapa={etapa} project={project}
           onClose={() => setOrcamentosModal(null)} onDone={onUpdate} />
       )}
       {anexoModal && (
-        <ModalAnexo item={anexoModal} projectId={projectId} etapa={etapa}
+        <ModalAnexo item={anexoModal} projectId={projectId} etapa={etapa} project={project}
           onClose={() => setAnexoModal(null)} onDone={onUpdate} />
       )}
       {dadosModal && (
@@ -1419,7 +1425,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
           onClose={() => setDadosModal(null)} onDone={onUpdate} />
       )}
       {contratoModal && contratoItems.length > 0 && (
-        <ModalContrato items={contratoItems} projectId={projectId} etapa={etapa}
+        <ModalContrato items={contratoItems} projectId={projectId} etapa={etapa} project={project}
           onClose={() => setContratoModal(false)} onDone={onUpdate} />
       )}
       {pedidoModal && pedidoItems.length > 0 && (
