@@ -407,6 +407,155 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
   )
 }
 
+// ── Modal de contrato unificado ──────────────────────────────
+function ModalContrato({ items, projectId, etapa, onClose, onDone }) {
+  const { session } = useAuth()
+  const fileRef = useRef(null)
+
+  const itemAnexo = items.find((i) => i.descricao === 'Contrato em PDF anexado')
+  const itemDataAssin = items.find((i) => i.descricao === 'Data de assinatura registrada')
+  const itemValorContr = items.find((i) => i.descricao === 'Valor contratual registrado')
+
+  const [existingDoc, setExistingDoc] = useState(null)
+  const [file, setFile] = useState(null)
+  const [dataAssinatura, setDataAssinatura] = useState(itemDataAssin?.dados?.data_assinatura || '')
+  const [valor, setValor] = useState(itemValorContr?.dados?.valor || '')
+  const [uploading, setUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const base = 'w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+
+  useEffect(() => {
+    if (!itemAnexo) return
+    supabase.from('documents').select('*')
+      .eq('checklist_item_id', itemAnexo.id)
+      .order('enviado_em', { ascending: false })
+      .limit(1)
+      .then(({ data }) => setExistingDoc(data?.[0] ?? null))
+  }, [])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!existingDoc && !file) { toast.error('Selecione o arquivo do contrato.'); return }
+    setSaving(true)
+    const now = new Date().toISOString()
+
+    if (file) {
+      setUploading(true)
+      const ext = file.name.split('.').pop()
+      const path = `${projectId}/${etapa}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('documents').upload(path, file, { upsert: false })
+      if (upErr) { toast.error('Erro ao enviar: ' + upErr.message); setSaving(false); setUploading(false); return }
+      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
+      await supabase.from('documents').insert({
+        project_id: projectId, etapa,
+        nome_arquivo: file.name, url_storage: publicUrl,
+        enviado_por: session.user.id, checklist_item_id: itemAnexo.id,
+      })
+      setUploading(false)
+    }
+
+    const updates = []
+    if (itemAnexo) {
+      updates.push(supabase.from('checklist_items').update({
+        concluido: true, concluido_por: session.user.id, concluido_em: now,
+      }).eq('id', itemAnexo.id))
+    }
+    if (itemDataAssin) {
+      updates.push(supabase.from('checklist_items').update({
+        dados: { data_assinatura: dataAssinatura },
+        concluido: !!dataAssinatura,
+        concluido_por: dataAssinatura ? session.user.id : null,
+        concluido_em: dataAssinatura ? now : null,
+      }).eq('id', itemDataAssin.id))
+    }
+    if (itemValorContr) {
+      updates.push(supabase.from('checklist_items').update({
+        dados: { valor },
+        concluido: !!valor,
+        concluido_por: valor ? session.user.id : null,
+        concluido_em: valor ? now : null,
+      }).eq('id', itemValorContr.id))
+    }
+    await Promise.all(updates)
+    toast.success('Contrato registrado!')
+    onDone(); onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Contrato assinado</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Registre os dados e anexe o contrato em PDF</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-4 flex-shrink-0">
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de assinatura *</label>
+            <input type="date" required value={dataAssinatura} onChange={(e) => setDataAssinatura(e.target.value)} className={base} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor contratual (R$) *</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">R$</span>
+              <input type="number" step="0.01" min="0" required value={valor}
+                onChange={(e) => setValor(e.target.value)} className={base + ' pl-9'} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Arquivo do contrato *</label>
+            {existingDoc && (
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-xl mb-2">
+                <PaperClipIcon className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                <a href={existingDoc.url_storage} target="_blank" rel="noreferrer"
+                  className="text-xs font-medium text-green-700 dark:text-green-400 hover:underline flex-1 truncate">
+                  {existingDoc.nome_arquivo}
+                </a>
+                <span className="text-[10px] font-bold text-green-600 dark:text-green-400 flex-shrink-0">✓ Arquivo atual</span>
+              </div>
+            )}
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-5 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            >
+              <DocumentArrowUpIcon className="w-7 h-7 text-gray-400 mx-auto mb-1.5" />
+              {file
+                ? <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{file.name}</p>
+                : <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {existingDoc ? 'Clique para substituir o contrato' : 'Clique para selecionar o contrato'}
+                  </p>
+              }
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">PDF, Word, imagem...</p>
+            </div>
+            <input ref={fileRef} type="file" className="hidden"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving || uploading}
+              className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
+              {uploading ? 'Enviando...' : saving ? 'Salvando...' : 'Confirmar OK'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ── Modal de formulário de dados ──────────────────────────────
 function ModalDados({ item, project, onClose, onDone }) {
   const { session } = useAuth()
@@ -562,6 +711,8 @@ function isOverdue(item) {
   })
 }
 
+const CONTRACT_DESCS = ['Contrato em PDF anexado', 'Data de assinatura registrada', 'Valor contratual registrado']
+
 // ── Componente principal ──────────────────────────────────────
 export default function ChecklistTab({ projectId, etapa, items, onUpdate, project }) {
   const { session } = useAuth()
@@ -569,10 +720,33 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   const [anexoModal, setAnexoModal] = useState(null)
   const [dadosModal, setDadosModal] = useState(null)
   const [orcamentosModal, setOrcamentosModal] = useState(null)
+  const [contratoModal, setContratoModal] = useState(false)
   const [users, setUsers] = useState([])
 
   const done = items.filter((i) => i.concluido).length
   const total = items.length
+
+  // Contract items grouped
+  const contratoItems = items.filter((i) => CONTRACT_DESCS.includes(i.descricao))
+  const contratoAllDone = contratoItems.length > 0 && contratoItems.every((i) => i.concluido)
+  const contratoPartial = contratoItems.some((i) => i.concluido) && !contratoAllDone
+  const itemAnexoCard = contratoItems.find((i) => i.descricao === 'Contrato em PDF anexado')
+  const itemDataCard = contratoItems.find((i) => i.descricao === 'Data de assinatura registrada')
+  const itemValorCard = contratoItems.find((i) => i.descricao === 'Valor contratual registrado')
+
+  // Build render list: replace the 3 contract items with a single sentinel
+  const renderList = (() => {
+    const list = []
+    let inserted = false
+    for (const item of items) {
+      if (CONTRACT_DESCS.includes(item.descricao)) {
+        if (!inserted) { list.push({ __contrato: true }); inserted = true }
+      } else {
+        list.push(item)
+      }
+    }
+    return list
+  })()
 
   useEffect(() => {
     supabase.from('users').select('id, nome').eq('ativo', true).order('nome')
@@ -637,7 +811,92 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
         <p className="text-gray-400 dark:text-gray-500 text-sm text-center py-8">Nenhum item de checklist para esta etapa.</p>
       ) : (
         <div className="space-y-2">
-          {items.map((item) => {
+          {renderList.map((item, idx) => {
+            // ── Card unificado de contrato ──
+            if (item.__contrato) {
+              return (
+                <div key="contrato-unificado" className={`rounded-xl border transition-colors ${
+                  contratoAllDone
+                    ? 'bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-800'
+                    : contratoPartial
+                      ? 'bg-amber-50/40 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50'
+                      : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
+                }`}>
+                  <div className="flex items-center gap-3 p-4">
+                    <button
+                      onClick={() => setContratoModal(true)}
+                      className="flex-shrink-0 transition-colors"
+                    >
+                      {contratoAllDone
+                        ? <CheckCircleSolid className="w-6 h-6 text-green-500 dark:text-green-400" />
+                        : <CheckCircleIcon className="w-6 h-6 text-gray-300 dark:text-gray-600 hover:text-blue-500" />
+                      }
+                    </button>
+                    <span className={`text-sm flex-1 ${contratoAllDone ? 'text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-200'}`}>
+                      Contrato assinado
+                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                        contratoAllDone
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                          : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+                      }`}>
+                        <PaperClipIcon className="w-3 h-3" />
+                        {contratoAllDone ? 'Registrado' : contratoPartial ? 'Incompleto' : 'Requer dados'}
+                      </span>
+                      {(contratoAllDone || contratoPartial) && (
+                        <button
+                          onClick={() => setContratoModal(true)}
+                          title="Editar"
+                          className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Resumo quando preenchido */}
+                  {(contratoAllDone || contratoPartial) && (
+                    <div className="px-4 pb-3 ml-9">
+                      <div className="mt-1 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1.5 border border-gray-100 dark:border-gray-700">
+                        {itemDataCard?.dados?.data_assinatura && (
+                          <div className="flex gap-2 text-xs">
+                            <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Data de assinatura:</span>
+                            <span className="text-gray-800 dark:text-gray-200 font-medium">
+                              {new Date(itemDataCard.dados.data_assinatura + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                        )}
+                        {itemValorCard?.dados?.valor && (
+                          <div className="flex gap-2 text-xs">
+                            <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Valor contratual:</span>
+                            <span className="text-gray-800 dark:text-gray-200 font-medium">
+                              R$ {parseFloat(itemValorCard.dados.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        )}
+                        {itemAnexoCard?.concluido && (
+                          <div className="flex gap-2 text-xs items-center">
+                            <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Arquivo:</span>
+                            <button
+                              type="button"
+                              onClick={() => setContratoModal(true)}
+                              className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
+                            >
+                              <PaperClipIcon className="w-3 h-3" />
+                              Ver contrato
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            // ── Card normal ──
             const hasFields = !!(CHECKLIST_FIELDS[item.descricao]?.length)
             const hasDados = hasFields && Object.keys(item.dados || {}).length > 0
             const overdue = isOverdue(item)
@@ -654,7 +913,6 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                 }`}
               >
                 <div className="flex items-center gap-3 p-4">
-                  {/* Ícone / botão de status */}
                   <button
                     onClick={() => handleClick(item)}
                     disabled={updating === item.id}
@@ -666,12 +924,10 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                     }
                   </button>
 
-                  {/* Descrição */}
                   <span className={`text-sm flex-1 ${item.concluido ? 'text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-200'}`}>
                     {item.descricao}
                   </span>
 
-                  {/* Badges e ações */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {overdue && (
                       <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200">
@@ -705,7 +961,6 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                   </div>
                 </div>
 
-                {/* Resumo dos dados preenchidos */}
                 {item.concluido && hasDados && (
                   <div className="px-4 pb-3">
                     <DadosResumo item={item} users={users} />
@@ -734,6 +989,10 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
       {dadosModal && (
         <ModalDados item={dadosModal} project={project}
           onClose={() => setDadosModal(null)} onDone={onUpdate} />
+      )}
+      {contratoModal && contratoItems.length > 0 && (
+        <ModalContrato items={contratoItems} projectId={projectId} etapa={etapa}
+          onClose={() => setContratoModal(false)} onDone={onUpdate} />
       )}
     </div>
   )
