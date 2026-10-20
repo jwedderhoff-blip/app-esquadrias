@@ -1123,7 +1123,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   const itemDataCard = contratoItems.find((i) => i.descricao === 'Data de assinatura registrada')
   const itemValorCard = contratoItems.find((i) => i.descricao === 'Valor contratual registrado')
 
-  // Carrega URL do contrato uma vez — funciona com dados.url_storage (novo) ou documents table (legado)
+  // Carrega URL do contrato — funciona com dados.url_storage (novo) ou documents table (legado)
   useEffect(() => {
     const fromDados = itemAnexoCard?.dados?.url_storage
     if (fromDados) { setContratoDocUrl(fromDados); return }
@@ -1134,6 +1134,25 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
       .limit(1)
       .then(({ data }) => { if (data?.[0]?.url_storage) setContratoDocUrl(data[0].url_storage) })
   }, [itemAnexoCard?.id, itemAnexoCard?.concluido])
+
+  // Abre o PDF diretamente, mesmo se contratoDocUrl ainda não carregou (evita popup blocker)
+  function abrirContrato() {
+    if (contratoDocUrl) { window.open(contratoDocUrl, '_blank'); return }
+    // Abre a janela sincronamente (não bloqueada pelo browser) e navega depois
+    const win = window.open('', '_blank')
+    const fromDados = itemAnexoCard?.dados?.url_storage
+    if (fromDados) { if (win) win.location.href = fromDados; setContratoDocUrl(fromDados); return }
+    if (!itemAnexoCard?.id) { if (win) win.close(); setContratoModal(true); return }
+    supabase.from('documents').select('url_storage')
+      .eq('checklist_item_id', itemAnexoCard.id)
+      .order('enviado_em', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        const url = data?.[0]?.url_storage
+        if (url) { setContratoDocUrl(url); if (win) win.location.href = url }
+        else { if (win) win.close(); setContratoModal(true) }
+      })
+  }
 
   // Pedido items grouped
   const pedidoItems = items.filter((i) => PEDIDO_DESCS.includes(i.descricao))
@@ -1353,26 +1372,14 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                         {itemAnexoCard?.concluido && (
                           <div className="flex gap-2 text-xs items-center">
                             <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Arquivo:</span>
-                            {contratoDocUrl ? (
-                              <a
-                                href={contratoDocUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
-                              >
-                                <PaperClipIcon className="w-3 h-3" />
-                                Ver contrato
-                              </a>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setContratoModal(true)}
-                                className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
-                              >
-                                <PaperClipIcon className="w-3 h-3" />
-                                Ver contrato
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={abrirContrato}
+                              className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
+                            >
+                              <PaperClipIcon className="w-3 h-3" />
+                              Ver contrato
+                            </button>
                           </div>
                         )}
                       </div>
