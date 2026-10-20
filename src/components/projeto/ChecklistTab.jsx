@@ -152,17 +152,36 @@ function Field({ field, value, onChange, users }) {
   )
 }
 
-// ── Modal de orçamentos (múltiplos arquivos + formulário) ─────
+// ── Modal de orçamentos com compras individuais ──────────────
 function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
   const { session } = useAuth()
   const fileRef = useRef(null)
+
+  function initCompras() {
+    const d = item.dados || {}
+    if (d.compras) return d.compras
+    if (d.fornecedor_aprovado) {
+      return [{
+        id: `migrated-${Date.now()}`,
+        fornecedor: d.fornecedor_aprovado,
+        valor: d.valor_aprovado || '',
+        data_entrega: d.data_entrega || '',
+        tipo_compra: d.tipo_compra || '',
+        percentual_compra: d.percentual_compra || '',
+        obs_compra: d.obs_compra || '',
+      }]
+    }
+    return []
+  }
+
+  const [compras, setCompras] = useState(initCompras)
   const [docs, setDocs] = useState([])
-  const [values, setValues] = useState(item.dados || {})
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleteJust, setDeleteJust] = useState('')
-  const [deleting, setDeleting] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const emptyForm = { fornecedor: '', valor: '', data_entrega: '', tipo_compra: '', percentual_compra: '', obs_compra: '' }
+  const [form, setFormState] = useState(emptyForm)
 
   useEffect(() => {
     supabase.from('documents').select('*')
@@ -171,13 +190,27 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
       .then(({ data }) => setDocs(data || []))
   }, [])
 
-  function set(key, val) { setValues((v) => ({ ...v, [key]: val })) }
+  function setFormField(k, v) { setFormState((prev) => ({ ...prev, [k]: v })) }
 
-  function toggleAprovado(id) {
-    const current = values.doc_aprovados_ids || []
-    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
-    set('doc_aprovados_ids', next)
+  function startAdd() { setFormState(emptyForm); setEditingId(null); setShowForm(true) }
+  function startEdit(compra) { setFormState({ ...compra }); setEditingId(compra.id); setShowForm(true) }
+  function cancelForm() { setShowForm(false); setEditingId(null) }
+
+  function saveForm() {
+    if (!form.fornecedor || !form.valor || !form.data_entrega || !form.tipo_compra) {
+      toast.error('Preencha fornecedor, valor, data de entrega e tipo.')
+      return
+    }
+    if (editingId) {
+      setCompras((prev) => prev.map((c) => c.id === editingId ? { ...form, id: editingId } : c))
+    } else {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      setCompras((prev) => [...prev, { ...form, id }])
+    }
+    setShowForm(false); setEditingId(null)
   }
+
+  function removeCompra(id) { setCompras((prev) => prev.filter((c) => c.id !== id)) }
 
   async function handleFileAdd(e) {
     const file = e.target.files?.[0]
@@ -199,28 +232,11 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
     setUploading(false)
   }
 
-  async function handleDocDelete() {
-    if (!deleteJust.trim()) { toast.error('Informe a justificativa.'); return }
-    setDeleting(true)
-    await supabase.from('documents').delete().eq('id', deleteTarget.id)
-    await supabase.from('activity_log').insert({
-      project_id: projectId, usuario_id: session.user.id,
-      acao: 'documento_excluido',
-      detalhe: `Orçamento "${deleteTarget.nome_arquivo}" excluído. Justificativa: ${deleteJust.trim()}`,
-    })
-    // Remove do array de aprovados se estava lá
-    const aprovados = (values.doc_aprovados_ids || []).filter((x) => x !== deleteTarget.id)
-    set('doc_aprovados_ids', aprovados)
-    setDocs((prev) => prev.filter((d) => d.id !== deleteTarget.id))
-    setDeleteTarget(null); setDeleteJust(''); setDeleting(false)
-    toast.success('Documento excluído.')
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault()
+  async function handleSave() {
+    if (compras.length === 0) { toast.error('Registre ao menos uma compra.'); return }
     setSaving(true)
     const { error } = await supabase.from('checklist_items').update({
-      dados: values,
+      dados: { compras },
       concluido: true,
       concluido_por: session.user.id,
       concluido_em: new Date().toISOString(),
@@ -231,9 +247,6 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
   }
 
   const base = 'w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-  const aprovadosIds = values.doc_aprovados_ids || []
-  const aprovados = docs.filter((d) => aprovadosIds.includes(d.id))
-  const outros = docs.filter((d) => !aprovadosIds.includes(d.id))
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -241,221 +254,290 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
         <div className="flex items-start justify-between mb-5">
           <div>
             <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Orçamentos realizados</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Anexe os orçamentos e registre os aprovados</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Registre as compras aprovadas</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-4 flex-shrink-0">
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Arquivos enviados */}
-        <div className="mb-5">
-          {docs.length > 0 && (
-            <div className="space-y-3 mb-3">
-              {/* Orçamentos aprovados */}
-              {aprovados.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1.5">
-                    Orçamentos aprovados ({aprovados.length})
-                  </p>
-                  <div className="space-y-1.5">
-                    {aprovados.map((d) => (
-                      <div key={d.id}>
-                        <div className="flex items-center gap-2 px-3 py-2.5 bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-700 rounded-xl">
-                          <div className="w-6 h-6 rounded bg-green-500 flex items-center justify-center flex-shrink-0">
-                            <PaperClipIcon className="w-3.5 h-3.5 text-white" />
-                          </div>
-                          <a href={d.url_storage} target="_blank" rel="noreferrer"
-                            className="text-xs font-semibold text-green-800 dark:text-green-400 hover:underline flex-1 truncate">
-                            {d.nome_arquivo}
-                          </a>
-                          <span className="text-[10px] font-bold text-green-700 bg-green-200 px-1.5 py-0.5 rounded-full flex-shrink-0">✓</span>
-                          <button type="button" onClick={() => toggleAprovado(d.id)}
-                            className="text-[10px] text-green-600 hover:text-gray-500 flex-shrink-0 underline">
-                            remover
-                          </button>
-                          <button type="button" onClick={() => { setDeleteTarget(d); setDeleteJust('') }}
-                            className="text-gray-300 hover:text-red-500 flex-shrink-0 transition-colors">
-                            <TrashIcon className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        {deleteTarget?.id === d.id && (
-                          <div className="mt-1 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                            <p className="text-xs font-medium text-red-700 dark:text-red-400 mb-1">Justificativa da exclusão *</p>
-                            <textarea rows={2} value={deleteJust} onChange={(e) => setDeleteJust(e.target.value)}
-                              placeholder="Motivo da exclusão..." autoFocus
-                              className="w-full px-2 py-1.5 text-xs rounded border border-red-300 dark:border-red-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none mb-2" />
-                            <div className="flex gap-2">
-                              <button type="button" onClick={() => setDeleteTarget(null)}
-                                className="flex-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Cancelar</button>
-                              <button type="button" onClick={handleDocDelete} disabled={deleting || !deleteJust.trim()}
-                                className="flex-1 py-1 text-xs bg-red-600 text-white rounded font-medium hover:bg-red-700 disabled:opacity-50">
-                                {deleting ? 'Excluindo...' : 'Excluir'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+        {/* Lista de compras */}
+        <div className="space-y-3 mb-4">
+          {compras.map((compra) => (
+            <div key={compra.id} className="p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-xl">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{compra.fornecedor}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    {compra.valor && <span>R$ {parseFloat(compra.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
+                    {compra.data_entrega && <span>Entrega: {new Date(compra.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}</span>}
+                    {compra.tipo_compra && <span>{compra.tipo_compra}{compra.percentual_compra ? ` (${compra.percentual_compra}%)` : ''}</span>}
                   </div>
+                  {compra.obs_compra && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{compra.obs_compra}</p>}
                 </div>
-              )}
-
-              {/* Sem aprovados ainda */}
-              {aprovados.length === 0 && docs.length > 0 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
-                  Marque os orçamentos aprovados para este projeto
-                </p>
-              )}
-
-              {/* Demais arquivos para consulta */}
-              {outros.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
-                    Arquivos para consulta ({outros.length})
-                  </p>
-                  <div className="space-y-1">
-                    {outros.map((d) => (
-                      <div key={d.id}>
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                          <PaperClipIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <a href={d.url_storage} target="_blank" rel="noreferrer"
-                            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:underline flex-1 truncate">
-                            {d.nome_arquivo}
-                          </a>
-                          <button type="button" onClick={() => toggleAprovado(d.id)}
-                            className="flex-shrink-0 text-[11px] text-gray-400 hover:text-green-600 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600 hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
-                            Marcar aprovado
-                          </button>
-                          <button type="button" onClick={() => { setDeleteTarget(d); setDeleteJust('') }}
-                            className="text-gray-300 hover:text-red-500 flex-shrink-0 transition-colors">
-                            <TrashIcon className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        {deleteTarget?.id === d.id && (
-                          <div className="mt-1 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                            <p className="text-xs font-medium text-red-700 dark:text-red-400 mb-1">Justificativa da exclusão *</p>
-                            <textarea rows={2} value={deleteJust} onChange={(e) => setDeleteJust(e.target.value)}
-                              placeholder="Motivo da exclusão..." autoFocus
-                              className="w-full px-2 py-1.5 text-xs rounded border border-red-300 dark:border-red-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-400 resize-none mb-2" />
-                            <div className="flex gap-2">
-                              <button type="button" onClick={() => setDeleteTarget(null)}
-                                className="flex-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Cancelar</button>
-                              <button type="button" onClick={handleDocDelete} disabled={deleting || !deleteJust.trim()}
-                                className="flex-1 py-1 text-xs bg-red-600 text-white rounded font-medium hover:bg-red-700 disabled:opacity-50">
-                                {deleting ? 'Excluindo...' : 'Excluir'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button type="button" onClick={() => startEdit(compra)}
+                    className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                    <PencilSquareIcon className="w-4 h-4" />
+                  </button>
+                  <button type="button" onClick={() => removeCompra(compra.id)}
+                    className="text-gray-300 hover:text-red-500 transition-colors">
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
+          ))}
+          {compras.length === 0 && !showForm && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+              Nenhuma compra registrada. Adicione ao menos uma.
+            </p>
           )}
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="w-full border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl py-3 text-xs text-gray-500 dark:text-gray-400 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
-          >
-            {uploading ? 'Enviando...' : '+ Adicionar orçamento (PDF, imagem…)'}
-          </button>
-          <input ref={fileRef} type="file" className="hidden"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-            onChange={handleFileAdd} />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fornecedor aprovado *</label>
-            <input required value={values.fornecedor_aprovado || ''}
-              onChange={(e) => set('fornecedor_aprovado', e.target.value)}
-              placeholder="Nome do fornecedor selecionado"
-              className={base} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor aprovado (R$) *</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">R$</span>
-              <input required type="number" step="0.01" min="0" value={values.valor_aprovado || ''}
-                onChange={(e) => set('valor_aprovado', e.target.value)}
-                className={base + ' pl-9'} />
+        {/* Formulário de adicionar/editar compra */}
+        {showForm ? (
+          <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl space-y-3">
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              {editingId ? 'Editar compra' : 'Nova compra'}
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fornecedor *</label>
+              <input value={form.fornecedor} onChange={(e) => setFormField('fornecedor', e.target.value)}
+                placeholder="Nome do fornecedor" className={base} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor (R$) *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">R$</span>
+                  <input type="number" step="0.01" min="0" value={form.valor}
+                    onChange={(e) => setFormField('valor', e.target.value)} className={base + ' pl-9'} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de entrega *</label>
+                <input type="date" value={form.data_entrega}
+                  onChange={(e) => setFormField('data_entrega', e.target.value)} className={base} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de compra *</label>
+              <select value={form.tipo_compra} onChange={(e) => setFormField('tipo_compra', e.target.value)} className={base}>
+                <option value="">Selecione...</option>
+                <option value="Totalidade do material">Totalidade do material</option>
+                <option value="Compra parcial">Compra parcial</option>
+              </select>
+            </div>
+            {form.tipo_compra === 'Compra parcial' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Percentual (%)</label>
+                  <div className="relative">
+                    <input type="number" min="1" max="100" value={form.percentual_compra}
+                      onChange={(e) => setFormField('percentual_compra', e.target.value)} className={base + ' pr-9'} />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">O que está sendo comprado</label>
+                  <textarea rows={2} value={form.obs_compra}
+                    onChange={(e) => setFormField('obs_compra', e.target.value)}
+                    placeholder="Descreva os itens..." className={base + ' resize-none'} />
+                </div>
+              </>
+            )}
+            <div className="flex gap-2">
+              <button type="button" onClick={cancelForm}
+                className="flex-1 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                Cancelar
+              </button>
+              <button type="button" onClick={saveForm}
+                className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+                Salvar compra
+              </button>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de entrega prevista *</label>
-            <input required type="date" value={values.data_entrega || ''}
-              onChange={(e) => set('data_entrega', e.target.value)}
-              className={base} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de compra *</label>
-            <select required value={values.tipo_compra || ''}
-              onChange={(e) => set('tipo_compra', e.target.value)}
-              className={base}>
-              <option value="">Selecione...</option>
-              <option value="Totalidade do material">Totalidade do material</option>
-              <option value="Compra parcial">Compra parcial</option>
-            </select>
-          </div>
-          {values.tipo_compra === 'Compra parcial' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Percentual do material nesta compra (%) *
-                </label>
-                <div className="relative">
-                  <input
-                    type="number" min="1" max="100" step="1"
-                    required
-                    value={values.percentual_compra || ''}
-                    onChange={(e) => set('percentual_compra', e.target.value)}
-                    placeholder="Ex: 60"
-                    className={base + ' pr-9'}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">%</span>
+        ) : (
+          <button type="button" onClick={startAdd}
+            className="w-full mb-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl py-3 text-xs text-gray-500 dark:text-gray-400 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+            + Registrar nova compra
+          </button>
+        )}
+
+        {/* Documentos de referência */}
+        <div className="mb-5">
+          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Documentos de referência</p>
+          {docs.length > 0 && (
+            <div className="space-y-1.5 mb-3">
+              {docs.map((d) => (
+                <div key={d.id} className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <PaperClipIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                  <a href={d.url_storage} target="_blank" rel="noreferrer"
+                    className="text-xs text-gray-600 dark:text-gray-400 hover:underline flex-1 truncate">{d.nome_arquivo}</a>
                 </div>
-                {values.percentual_compra && parseFloat(values.percentual_compra) > 0 && parseFloat(values.percentual_compra) <= 100 && (
-                  <div className="mt-2 space-y-1.5">
-                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-blue-500 rounded-full transition-all"
-                        style={{ width: `${Math.min(parseFloat(values.percentual_compra), 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-1.5">
-                      Esta ordem cobre <strong>{values.percentual_compra}%</strong> do material —{' '}
-                      {parseFloat(values.percentual_compra) >= 100
-                        ? 'compra total do material.'
-                        : <>restam <strong>{(100 - parseFloat(values.percentual_compra)).toFixed(0)}%</strong> ainda a serem comprados.</>
-                      }
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">O que está sendo comprado nesta ordem</label>
-                <textarea rows={3} value={values.obs_compra || ''}
-                  onChange={(e) => set('obs_compra', e.target.value)}
-                  placeholder="Descreva os itens desta compra parcial..."
-                  className={base + ' resize-none'} />
-              </div>
-            </>
+              ))}
+            </div>
           )}
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-              Cancelar
-            </button>
-            <button type="submit" disabled={saving}
-              className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
-              {saving ? 'Salvando...' : 'Confirmar OK'}
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="w-full border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl py-2.5 text-xs text-gray-500 dark:text-gray-400 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50">
+            {uploading ? 'Enviando...' : '+ Adicionar documento (PDF, imagem…)'}
+          </button>
+          <input ref={fileRef} type="file" className="hidden"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" onChange={handleFileAdd} />
+        </div>
+
+        <div className="flex gap-3">
+          <button type="button" onClick={onClose}
+            className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            Cancelar
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving || compras.length === 0}
+            className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
+            {saving ? 'Salvando...' : 'Confirmar OK'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Modal de recebimento de material (por compra) ─────────────
+function ModalRecebimento({ item, orcamentoItem, onClose, onDone }) {
+  const { session } = useAuth()
+  const compras = orcamentoItem?.dados?.compras || []
+  const [recebimentos, setRecebimentos] = useState(item.dados?.recebimentos || [])
+  const [saving, setSaving] = useState(false)
+
+  function getRec(compraId) {
+    return recebimentos.find((r) => r.compra_id === compraId)
+  }
+
+  function toggleRec(compraId) {
+    const existing = getRec(compraId)
+    if (existing) {
+      setRecebimentos((prev) => prev.map((r) =>
+        r.compra_id === compraId ? { ...r, recebido: !r.recebido } : r
+      ))
+    } else {
+      setRecebimentos((prev) => [...prev, {
+        compra_id: compraId, recebido: true,
+        data_recebimento: new Date().toISOString().split('T')[0], obs: '',
+      }])
+    }
+  }
+
+  function setRecField(compraId, field, value) {
+    setRecebimentos((prev) => prev.map((r) =>
+      r.compra_id === compraId ? { ...r, [field]: value } : r
+    ))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    const allRecebidos = compras.length > 0 && compras.every((c) => getRec(c.id)?.recebido)
+    const { error } = await supabase.from('checklist_items').update({
+      dados: { recebimentos },
+      concluido: allRecebidos,
+      concluido_por: allRecebidos ? session.user.id : null,
+      concluido_em: allRecebidos ? new Date().toISOString() : null,
+    }).eq('id', item.id)
+    if (error) { toast.error('Erro: ' + error.message); setSaving(false); return }
+    toast.success('Recebimentos atualizados!')
+    onDone(); onClose()
+  }
+
+  const base = 'w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+
+  if (!compras.length) {
+    return (
+      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6">
+          <div className="flex items-start justify-between mb-4">
+            <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Material recebido e conferido</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-4">
+              <XMarkIcon className="w-5 h-5" />
             </button>
           </div>
-        </form>
+          <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+            Nenhuma compra registrada em "Orçamentos realizados". Registre as compras primeiro.
+          </p>
+          <button type="button" onClick={onClose}
+            className="mt-4 w-full py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            Fechar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Material recebido e conferido</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Confirme o recebimento de cada compra</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-4 flex-shrink-0">
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {compras.map((compra) => {
+            const rec = getRec(compra.id)
+            const recebido = rec?.recebido ?? false
+            return (
+              <div key={compra.id} className={`rounded-xl border p-4 ${recebido ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'}`}>
+                <div className="flex items-start gap-3">
+                  <button type="button" onClick={() => toggleRec(compra.id)} className="flex-shrink-0 mt-0.5 transition-colors">
+                    {recebido
+                      ? <CheckCircleSolid className="w-5 h-5 text-green-500 dark:text-green-400" />
+                      : <CheckCircleIcon className="w-5 h-5 text-gray-300 dark:text-gray-600 hover:text-blue-500" />
+                    }
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{compra.fornecedor}</p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      {compra.valor && <span>R$ {parseFloat(compra.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
+                      {compra.data_entrega && <span>Prev.: {new Date(compra.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}</span>}
+                      {compra.tipo_compra && <span>{compra.tipo_compra}{compra.percentual_compra ? ` (${compra.percentual_compra}%)` : ''}</span>}
+                    </div>
+                    {compra.obs_compra && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{compra.obs_compra}</p>}
+                    {recebido && (
+                      <div className="mt-3 space-y-2">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Data de recebimento</label>
+                          <input type="date" value={rec?.data_recebimento || ''}
+                            onChange={(e) => setRecField(compra.id, 'data_recebimento', e.target.value)} className={base} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Observações</label>
+                          <textarea rows={2} value={rec?.obs || ''}
+                            onChange={(e) => setRecField(compra.id, 'obs', e.target.value)}
+                            placeholder="Ex: sem avarias, conferido com NF..."
+                            className={base + ' resize-none'} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex gap-3 mt-5">
+          <button type="button" onClick={onClose}
+            className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            Cancelar
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving}
+            className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
+            {saving ? 'Salvando...' : 'Confirmar'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -976,6 +1058,10 @@ function DadosResumo({ item, users }) {
 // Verifica se algum campo de data com alertar_atraso está vencido
 function isOverdue(item) {
   if (item.concluido) return false
+  if (item.descricao === 'Orçamentos realizados') {
+    const compras = item.dados?.compras || []
+    return compras.some((c) => c.data_entrega && new Date(c.data_entrega + 'T23:59:59') < new Date())
+  }
   const fields = CHECKLIST_FIELDS[item.descricao] || []
   const dados = item.dados || {}
   return fields.some((f) => {
@@ -1001,6 +1087,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   const [anexoModal, setAnexoModal] = useState(null)
   const [dadosModal, setDadosModal] = useState(null)
   const [orcamentosModal, setOrcamentosModal] = useState(null)
+  const [recebimentoModal, setRecebimentoModal] = useState(null)
   const [contratoModal, setContratoModal] = useState(false)
   const [pedidoModal, setPedidoModal] = useState(false)
   const [users, setUsers] = useState([])
@@ -1061,6 +1148,10 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
     if (item.descricao === 'Orçamentos realizados') {
       setOrcamentosModal(item); return
     }
+    if (item.descricao === 'Material recebido e conferido') {
+      const orcamentoItem = items.find((i) => i.descricao === 'Orçamentos realizados')
+      setRecebimentoModal({ item, orcamentoItem }); return
+    }
     if (item.requer_documento && !item.concluido) {
       setAnexoModal(item); return
     }
@@ -1088,6 +1179,10 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
 
   function openEdit(item) {
     if (item.descricao === 'Orçamentos realizados') { setOrcamentosModal(item); return }
+    if (item.descricao === 'Material recebido e conferido') {
+      const orcamentoItem = items.find((i) => i.descricao === 'Orçamentos realizados')
+      setRecebimentoModal({ item, orcamentoItem }); return
+    }
     if (item.requer_documento) { setAnexoModal(item); return }
     const fields = CHECKLIST_FIELDS[item.descricao]
     if (fields?.length) { setDadosModal(item); return }
@@ -1376,14 +1471,14 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                         {item.concluido ? 'Anexado' : 'Requer doc.'}
                       </span>
                     )}
-                    {hasFields && !item.requer_documento && (
+                    {(hasFields || item.descricao === 'Material recebido e conferido') && !item.requer_documento && (
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                         item.concluido ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
                       }`}>
                         {item.concluido ? '✓ Preenchido' : 'Requer dados'}
                       </span>
                     )}
-                    {item.concluido && (hasFields || item.requer_documento) && (
+                    {item.concluido && (hasFields || item.requer_documento || item.descricao === 'Material recebido e conferido') && (
                       <button
                         onClick={() => openEdit(item)}
                         title="Editar"
@@ -1400,6 +1495,62 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                     <DadosResumo item={item} users={users} />
                   </div>
                 )}
+
+                {/* Resumo de compras para Orçamentos realizados */}
+                {item.descricao === 'Orçamentos realizados' && (() => {
+                  const compras = item.dados?.compras || []
+                  if (!compras.length) return null
+                  return (
+                    <div className="px-4 pb-3 ml-9">
+                      <div className="mt-1 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700 space-y-1.5">
+                        {compras.map((compra) => (
+                          <div key={compra.id} className="text-xs text-gray-700 dark:text-gray-300">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{compra.fornecedor}</span>
+                              {compra.valor && <span className="text-gray-500">R$ {parseFloat(compra.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
+                            </div>
+                            {compra.data_entrega && (
+                              <div className="text-gray-400 dark:text-gray-500">
+                                Entrega: {new Date(compra.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                {compra.tipo_compra && ` · ${compra.tipo_compra}${compra.percentual_compra ? ` (${compra.percentual_compra}%)` : ''}`}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Status por compra para Material recebido e conferido */}
+                {item.descricao === 'Material recebido e conferido' && (() => {
+                  const orcamentoItem = items.find((i) => i.descricao === 'Orçamentos realizados')
+                  const compras = orcamentoItem?.dados?.compras || []
+                  const recebimentos = item.dados?.recebimentos || []
+                  if (!compras.length) return null
+                  return (
+                    <div className="px-4 pb-3 ml-9">
+                      <div className="mt-1 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700 space-y-1.5">
+                        {compras.map((compra) => {
+                          const rec = recebimentos.find((r) => r.compra_id === compra.id)
+                          return (
+                            <div key={compra.id} className="flex items-center gap-2 text-xs">
+                              {rec?.recebido
+                                ? <CheckCircleSolid className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                                : <CheckCircleIcon className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                              }
+                              <span className="flex-1 text-gray-700 dark:text-gray-300 truncate">{compra.fornecedor}</span>
+                              {rec?.recebido && rec?.data_recebimento
+                                ? <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">{new Date(rec.data_recebimento + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                : <span className="text-amber-500 dark:text-amber-400 flex-shrink-0 font-medium">Pendente</span>
+                              }
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             )
           })}
@@ -1415,6 +1566,10 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
       {orcamentosModal && (
         <ModalOrcamentos item={orcamentosModal} projectId={projectId} etapa={etapa} project={project}
           onClose={() => setOrcamentosModal(null)} onDone={onUpdate} />
+      )}
+      {recebimentoModal && (
+        <ModalRecebimento item={recebimentoModal.item} orcamentoItem={recebimentoModal.orcamentoItem}
+          onClose={() => setRecebimentoModal(null)} onDone={onUpdate} />
       )}
       {anexoModal && (
         <ModalAnexo item={anexoModal} projectId={projectId} etapa={etapa} project={project}
