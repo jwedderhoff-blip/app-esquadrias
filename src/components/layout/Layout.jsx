@@ -10,8 +10,8 @@ import { supabase } from '../../lib/supabase'
 import NotificationBell from './NotificationBell'
 
 const navItems = [
-  { to: '/', label: 'Projetos', icon: FolderIcon, roles: ['operacional', 'supervisor', 'administrador', 'super_admin'] },
-  { to: '/carteira', label: 'Carteira', icon: BriefcaseIcon, roles: ['supervisor', 'administrador', 'super_admin'] },
+  { to: '/', label: 'Projetos', icon: FolderIcon, roles: ['operacional', 'comercial', 'administrador', 'super_admin'] },
+  { to: '/carteira', label: 'Carteira', icon: BriefcaseIcon, roles: ['comercial', 'administrador', 'super_admin'] },
   { to: '/usuarios', label: 'Usuários', icon: UsersIcon, roles: ['administrador', 'super_admin'] },
   { to: '/log', label: 'Log de Atividades', icon: ChartBarIcon, roles: ['administrador', 'super_admin'] },
   { to: '/admin', label: 'Empresas', icon: BuildingOffice2Icon, roles: ['super_admin'] },

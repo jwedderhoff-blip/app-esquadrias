@@ -18,7 +18,7 @@ export default function DocumentosTab({ projectId, etapa, project }) {
   const [justificativa, setJustificativa] = useState('')
   const [deleting, setDeleting] = useState(false)
   const fileRef = useRef()
-  const canDelete = ['administrador', 'super_admin', 'supervisor'].includes(profile?.perfil)
+  const canDelete = ['administrador', 'super_admin'].includes(profile?.perfil)
 
   async function fetchDocs() {
     setLoading(true)
@@ -90,7 +90,7 @@ export default function DocumentosTab({ projectId, etapa, project }) {
     const { data: notifyUsers } = await supabase
       .from('users')
       .select('id')
-      .in('perfil', ['supervisor', 'administrador'])
+      .in('perfil', ['comercial', 'administrador'])
       .neq('id', session.user.id)
 
     if (notifyUsers?.length) {

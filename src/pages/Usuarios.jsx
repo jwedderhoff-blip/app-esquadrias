@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import Spinner from '../components/ui/Spinner'
 import toast from 'react-hot-toast'
 
-const PERFIS = ['operacional', 'supervisor', 'administrador']
+const PERFIS = ['operacional', 'comercial', 'administrador']
 
 function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmin }) {
   const editing = !!usuario?.id

@@ -215,7 +215,7 @@ export default function ProjetoDetalhe() {
   const [advanceModal, setAdvanceModal] = useState(false)
   const [stageStats, setStageStats] = useState({})
 
-  const canEdit = ['administrador', 'supervisor', 'super_admin'].includes(profile?.perfil)
+  const canEdit = ['administrador', 'comercial', 'super_admin'].includes(profile?.perfil)
   const canDelete = ['administrador', 'super_admin'].includes(profile?.perfil)
 
   async function fetchProject() {

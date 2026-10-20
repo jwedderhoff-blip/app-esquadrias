@@ -49,7 +49,7 @@ function AppRoutes() {
       <Route
         path="/carteira"
         element={
-          <ProtectedRoute requiredPerfil={['supervisor', 'administrador']}>
+          <ProtectedRoute requiredPerfil={['comercial', 'administrador']}>
             <Layout><Carteira /></Layout>
           </ProtectedRoute>
         }
