@@ -420,6 +420,7 @@ function ModalPedido({ items, projectId, etapa, project, onClose, onDone }) {
   const [dadosCliente, setDadosCliente] = useState(itemDados?.dados || {})
   const [prazo, setPrazo] = useState(itemPrazo?.dados?.prazo || '')
   const [responsavelId, setResponsavelId] = useState(itemResp?.dados?.responsavel_id || '')
+  const [vendedorId, setVendedorId] = useState(itemDados?.dados?.vendedor_id || '')
   const [existingDoc, setExistingDoc] = useState(null)
   const [file, setFile] = useState(null)
   const [users, setUsers] = useState([])
@@ -442,6 +443,12 @@ function ModalPedido({ items, projectId, etapa, project, onClose, onDone }) {
   }, [])
 
   function setDado(key, val) { setDadosCliente((prev) => ({ ...prev, [key]: val })) }
+
+  // persiste vendedor junto aos dados do cliente
+  function setVendedor(val) {
+    setVendedorId(val)
+    setDadosCliente((prev) => ({ ...prev, vendedor_id: val }))
+  }
 
   function copiarDoCadastro() {
     if (!project) return
@@ -527,19 +534,26 @@ function ModalPedido({ items, projectId, etapa, project, onClose, onDone }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Prazo e Responsável */}
+          {/* Prazo, Responsável e Vendedor */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prazo solicitado</label>
               <input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} className={base} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Responsável</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Responsável pelo andamento</label>
               <select value={responsavelId} onChange={(e) => setResponsavelId(e.target.value)} className={base}>
                 <option value="">Selecione...</option>
                 {users.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vendedor</label>
+            <select value={vendedorId} onChange={(e) => setVendedor(e.target.value)} className={base}>
+              <option value="">Selecione...</option>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+            </select>
           </div>
 
           {/* Dados do cliente */}
@@ -1178,6 +1192,14 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                             <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Responsável:</span>
                             <span className="text-gray-800 dark:text-gray-200 font-medium">
                               {users.find((u) => u.id === itemRespCard.dados.responsavel_id)?.nome}
+                            </span>
+                          </div>
+                        )}
+                        {itemDadosCard?.dados?.vendedor_id && users.find((u) => u.id === itemDadosCard.dados.vendedor_id) && (
+                          <div className="flex gap-2 text-xs">
+                            <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Vendedor:</span>
+                            <span className="text-gray-800 dark:text-gray-200 font-medium">
+                              {users.find((u) => u.id === itemDadosCard.dados.vendedor_id)?.nome}
                             </span>
                           </div>
                         )}
