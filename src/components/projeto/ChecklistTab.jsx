@@ -128,6 +128,21 @@ function Field({ field, value, onChange, users }) {
     </div>
   )
 
+  if (field.type === 'boolean') return (
+    <div className="flex items-center gap-3">
+      <input
+        type="checkbox"
+        id={`chk-${field.key}`}
+        checked={!!value}
+        onChange={(e) => onChange(e.target.checked)}
+        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+      />
+      <label htmlFor={`chk-${field.key}`} className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+        {value ? 'Sim — confirmado' : 'Ainda não confirmado'}
+      </label>
+    </div>
+  )
+
   return (
     <input type={field.type} value={value || ''} onChange={(e) => onChange(e.target.value)}
       required={field.required} className={base} />
@@ -920,7 +935,8 @@ function DadosResumo({ item, users }) {
 
   function display(field) {
     const v = dados[field.key]
-    if (!v) return '—'
+    if (field.type === 'boolean') return v ? '✓ Confirmado' : '—'
+    if (v === undefined || v === null || v === '') return '—'
     if (field.type === 'user_select') return users.find((u) => u.id === v)?.nome ?? v
     if (field.type === 'currency') return `R$ ${parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
     if (field.type === 'date') return new Date(v + 'T12:00:00').toLocaleDateString('pt-BR')

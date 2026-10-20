@@ -35,6 +35,32 @@ export const CHECKLIST_FIELDS = {
   'Data de assinatura registrada': [
     { key: 'data_assinatura', label: 'Data de assinatura', type: 'date', required: true },
   ],
+  // Fabricação
+  'Responsável pela fabricação': [
+    { key: 'nome_responsavel', label: 'Nome do responsável', type: 'text', required: true },
+  ],
+  'Prazo de início e conclusão da fabricação': [
+    { key: 'prazo_inicio', label: 'Data de início', type: 'date', required: true },
+    { key: 'prazo_conclusao', label: 'Data de conclusão', type: 'date', required: true },
+  ],
+  // Instalação
+  'Data de início e conclusão da instalação': [
+    { key: 'data_inicio', label: 'Data de início', type: 'date', required: true },
+    { key: 'data_conclusao_prevista', label: 'Data de conclusão prevista', type: 'date', required: false },
+  ],
+  'Nome dos instaladores': [
+    { key: 'nome_instaladores', label: 'Nome dos instaladores', type: 'text', required: true },
+  ],
+  'Data da conclusão real da instalação': [
+    { key: 'data_conclusao_real', label: 'Data da conclusão real', type: 'date', required: true, alertar_atraso: false },
+  ],
+  // Pronto para entrega — logística agrupada
+  'Logística de entrega confirmada': [
+    { key: 'entregador_nome', label: 'Entregador agendado (nome)', type: 'text', required: false },
+    { key: 'data_entrega_agendada', label: 'Data agendada para entrega', type: 'date', required: false },
+    { key: 'cliente_agendado', label: 'Cliente agendado (confirmado)', type: 'boolean', required: false },
+    { key: 'nota_emitida', label: 'Nota fiscal emitida', type: 'boolean', required: false },
+  ],
   'Orçamentos realizados': [
     { key: 'fornecedor_aprovado', label: 'Fornecedor aprovado', type: 'text', required: true },
     { key: 'valor_aprovado', label: 'Valor aprovado (R$)', type: 'currency', required: true },
@@ -58,6 +84,7 @@ export const CHECKLIST_FIELDS = {
     { key: 'horario', label: 'Horário', type: 'time', required: false },
   ],
   'Vistoria realizada': [
+    { key: 'nome_vistoriador', label: 'Nome do vistoriador', type: 'text', required: false },
     { key: 'data_vistoria', label: 'Data da vistoria', type: 'date', required: true },
     { key: 'observacoes', label: 'Observações', type: 'textarea', required: false },
   ],
