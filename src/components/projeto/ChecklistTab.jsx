@@ -1003,7 +1003,17 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   const itemRespCard = pedidoItems.find((i) => i.descricao === 'Responsável interno atribuído')
   const itemDescCard = pedidoItems.find((i) => i.descricao === 'Descrição do produto solicitado')
 
+  // Countdown do prazo do pedido
+  const prazoDeadline = etapa === 'pedido' ? (itemPrazoCard?.dados?.prazo ?? null) : null
+  const diasRestantes = (() => {
+    if (!prazoDeadline) return null
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const deadline = new Date(prazoDeadline + 'T00:00:00')
+    return Math.round((deadline - today) / (1000 * 60 * 60 * 24))
+  })()
+
   // Build render list: replace grouped items with sentinels
+  // Pedido grouping only applies when etapa === 'pedido' to avoid showing the card in other stages
   const renderList = (() => {
     const list = []
     let contratoInserted = false
@@ -1011,7 +1021,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
     for (const item of items) {
       if (CONTRACT_DESCS.includes(item.descricao)) {
         if (!contratoInserted) { list.push({ __contrato: true }); contratoInserted = true }
-      } else if (PEDIDO_DESCS.includes(item.descricao)) {
+      } else if (etapa === 'pedido' && PEDIDO_DESCS.includes(item.descricao)) {
         if (!pedidoInserted) { list.push({ __pedido: true }); pedidoInserted = true }
       } else {
         list.push(item)
@@ -1078,6 +1088,49 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
           style={{ width: total > 0 ? `${(done / total) * 100}%` : '0%' }}
         />
       </div>
+
+      {/* Countdown do prazo do pedido */}
+      {diasRestantes !== null && (
+        <div className={`mb-4 rounded-xl border p-4 flex items-center gap-4 ${
+          diasRestantes < 0
+            ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+            : diasRestantes <= 7
+              ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800'
+              : 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+        }`}>
+          <div className={`text-4xl font-black leading-none ${
+            diasRestantes < 0 ? 'text-red-600 dark:text-red-400'
+            : diasRestantes <= 7 ? 'text-amber-600 dark:text-amber-400'
+            : 'text-green-600 dark:text-green-400'
+          }`}>
+            {Math.abs(diasRestantes)}
+          </div>
+          <div className="flex-1">
+            <p className={`text-sm font-bold ${
+              diasRestantes < 0 ? 'text-red-700 dark:text-red-300'
+              : diasRestantes <= 7 ? 'text-amber-700 dark:text-amber-300'
+              : 'text-green-700 dark:text-green-300'
+            }`}>
+              {diasRestantes < 0
+                ? `dia${Math.abs(diasRestantes) !== 1 ? 's' : ''} em atraso`
+                : diasRestantes === 0
+                  ? 'Prazo vence hoje!'
+                  : `dia${diasRestantes !== 1 ? 's' : ''} restante${diasRestantes !== 1 ? 's' : ''}`
+              }
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Prazo do pedido: {new Date(prazoDeadline + 'T12:00:00').toLocaleDateString('pt-BR')}
+            </p>
+          </div>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0 ${
+            diasRestantes < 0 ? 'bg-red-100 dark:bg-red-900/30'
+            : diasRestantes <= 7 ? 'bg-amber-100 dark:bg-amber-900/30'
+            : 'bg-green-100 dark:bg-green-900/30'
+          }`}>
+            {diasRestantes < 0 ? '🔴' : diasRestantes <= 7 ? '⚠️' : '✅'}
+          </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <p className="text-gray-400 dark:text-gray-500 text-sm text-center py-8">Nenhum item de checklist para esta etapa.</p>

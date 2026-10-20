@@ -144,6 +144,28 @@ function ProjectCard({ p }) {
         )}
       </div>
 
+      {/* Countdown do prazo do pedido */}
+      {p.prazo_pedido && (() => {
+        const today = new Date(); today.setHours(0, 0, 0, 0)
+        const deadline = new Date(p.prazo_pedido + 'T00:00:00')
+        const dias = Math.round((deadline - today) / (1000 * 60 * 60 * 24))
+        const isOverdue = dias < 0
+        const isUrgent = dias >= 0 && dias <= 7
+        const color = isOverdue ? '#ef4444' : isUrgent ? '#f59e0b' : '#22c55e'
+        const label = isOverdue
+          ? `${Math.abs(dias)}d em atraso`
+          : dias === 0 ? 'Vence hoje'
+          : `${dias}d restantes`
+        return (
+          <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-[10px] text-gray-400">Prazo do pedido</span>
+            <span className="text-[11px] font-bold" style={{ color }}>
+              {isOverdue ? '🔴' : isUrgent ? '⚠️' : '✅'} {label}
+            </span>
+          </div>
+        )
+      })()}
+
       <p className="text-[10px] text-gray-300 mt-2 text-right">
         {format(new Date(updated), "dd/MM/yy", { locale: ptBR })}
       </p>

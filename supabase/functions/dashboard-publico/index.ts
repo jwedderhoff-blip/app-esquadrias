@@ -45,12 +45,22 @@ serve(async (req) => {
     const projectIds = (projects || []).map((p) => p.id)
 
     let checklistStats: { project_id: string; concluido: boolean }[] = []
+    let prazosData: { project_id: string; dados: Record<string, string> | null }[] = []
     if (projectIds.length) {
-      const { data } = await supabase
-        .from('checklist_items')
-        .select('project_id, concluido')
-        .in('project_id', projectIds)
-      checklistStats = data || []
+      const [statsRes, prazosRes] = await Promise.all([
+        supabase
+          .from('checklist_items')
+          .select('project_id, concluido')
+          .in('project_id', projectIds),
+        supabase
+          .from('checklist_items')
+          .select('project_id, dados')
+          .in('project_id', projectIds)
+          .eq('descricao', 'Prazo solicitado pelo cliente')
+          .eq('etapa', 'pedido'),
+      ])
+      checklistStats = statsRes.data || []
+      prazosData = prazosRes.data || []
     }
 
     const statsByProject: Record<string, { total: number; done: number }> = {}
@@ -60,10 +70,16 @@ serve(async (req) => {
       if (item.concluido) statsByProject[item.project_id].done++
     }
 
+    const prazoByProject: Record<string, string | null> = {}
+    for (const item of prazosData) {
+      prazoByProject[item.project_id] = item.dados?.prazo ?? null
+    }
+
     const projectsWithStats = (projects || []).map((p) => ({
       ...p,
       checklist_total: statsByProject[p.id]?.total ?? 0,
       checklist_done: statsByProject[p.id]?.done ?? 0,
+      prazo_pedido: prazoByProject[p.id] ?? null,
     }))
 
     return new Response(
