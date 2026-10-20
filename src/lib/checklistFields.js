@@ -36,6 +36,10 @@ export const CHECKLIST_FIELDS = {
     { key: 'data_assinatura', label: 'Data de assinatura', type: 'date', required: true },
   ],
   // Fabricação
+  'Ordem de produção emitida': [
+    { key: 'data_emissao', label: 'Data de emissão da ordem', type: 'date', required: true },
+    { key: 'observacoes', label: 'Observações', type: 'textarea', required: false },
+  ],
   'Responsável pela fabricação': [
     { key: 'nome_responsavel', label: 'Nome do responsável', type: 'text', required: true },
   ],
