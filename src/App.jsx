@@ -5,7 +5,6 @@ import { NotificationsProvider } from './context/NotificationsContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
-import Projetos from './pages/Projetos'
 import NovoProjeto from './pages/NovoProjeto'
 import ProjetoDetalhe from './pages/ProjetoDetalhe'
 import Carteira from './pages/Carteira'
@@ -26,7 +25,7 @@ function AppRoutes() {
         path="/"
         element={
           <ProtectedRoute>
-            <Layout><Projetos /></Layout>
+            <Layout><Carteira /></Layout>
           </ProtectedRoute>
         }
       />
@@ -43,14 +42,6 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout><ProjetoDetalhe /></Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/carteira"
-        element={
-          <ProtectedRoute requiredPerfil={['comercial', 'administrador']}>
-            <Layout><Carteira /></Layout>
           </ProtectedRoute>
         }
       />

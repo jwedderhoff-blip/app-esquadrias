@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  FolderIcon, BriefcaseIcon, UsersIcon, Bars3Icon, XMarkIcon,
+  FolderIcon, UsersIcon, Bars3Icon, XMarkIcon,
   ArrowRightOnRectangleIcon, ChartBarIcon, BuildingOffice2Icon,
   ChevronDownIcon, HomeIcon, Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
@@ -11,7 +11,6 @@ import NotificationBell from './NotificationBell'
 
 const navItems = [
   { to: '/', label: 'Projetos', icon: FolderIcon, roles: ['operacional', 'comercial', 'administrador', 'super_admin'] },
-  { to: '/carteira', label: 'Carteira', icon: BriefcaseIcon, roles: ['comercial', 'administrador', 'super_admin'] },
   { to: '/usuarios', label: 'Usuários', icon: UsersIcon, roles: ['administrador', 'super_admin'] },
   { to: '/log', label: 'Log de Atividades', icon: ChartBarIcon, roles: ['administrador', 'super_admin'] },
   { to: '/admin', label: 'Empresas', icon: BuildingOffice2Icon, roles: ['super_admin'] },
