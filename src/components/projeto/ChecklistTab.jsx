@@ -383,13 +383,48 @@ function ModalOrcamentos({ item, projectId, etapa, onClose, onDone }) {
             </select>
           </div>
           {values.tipo_compra === 'Compra parcial' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">O que está sendo comprado nesta ordem</label>
-              <textarea rows={3} value={values.obs_compra || ''}
-                onChange={(e) => set('obs_compra', e.target.value)}
-                placeholder="Descreva os itens desta compra parcial..."
-                className={base + ' resize-none'} />
-            </div>
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Percentual do material nesta compra (%) *
+                </label>
+                <div className="relative">
+                  <input
+                    type="number" min="1" max="100" step="1"
+                    required
+                    value={values.percentual_compra || ''}
+                    onChange={(e) => set('percentual_compra', e.target.value)}
+                    placeholder="Ex: 60"
+                    className={base + ' pr-9'}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">%</span>
+                </div>
+                {values.percentual_compra && parseFloat(values.percentual_compra) > 0 && parseFloat(values.percentual_compra) <= 100 && (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all"
+                        style={{ width: `${Math.min(parseFloat(values.percentual_compra), 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-1.5">
+                      Esta ordem cobre <strong>{values.percentual_compra}%</strong> do material —{' '}
+                      {parseFloat(values.percentual_compra) >= 100
+                        ? 'compra total do material.'
+                        : <>restam <strong>{(100 - parseFloat(values.percentual_compra)).toFixed(0)}%</strong> ainda a serem comprados.</>
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">O que está sendo comprado nesta ordem</label>
+                <textarea rows={3} value={values.obs_compra || ''}
+                  onChange={(e) => set('obs_compra', e.target.value)}
+                  placeholder="Descreva os itens desta compra parcial..."
+                  className={base + ' resize-none'} />
+              </div>
+            </>
           )}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
