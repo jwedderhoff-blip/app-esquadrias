@@ -21,7 +21,6 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
     cliente_fone: project.cliente_fone ?? '',
     cliente_email: project.cliente_email ?? '',
     criado_por: project.criado_por ?? '',
-    drive_pasta_url: project.drive_pasta_url ?? '',
   })
   const [confirmando, setConfirmando] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -34,7 +33,7 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
       titulo: 'Título', cliente: 'Cliente',
       cliente_cpf_cnpj: 'CPF/CNPJ',
       cliente_fone: 'Telefone', cliente_email: 'Email cliente',
-      criado_por: 'Responsável', drive_pasta_url: 'Pasta Drive',
+      criado_por: 'Responsável',
     }
     return Object.entries(form)
       .filter(([k, v]) => String(v ?? '') !== String(project[k] ?? ''))
@@ -113,13 +112,6 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
                 <input type="email" value={form.cliente_email} onChange={set('cliente_email')}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Pasta no Google Drive (URL)</label>
-              <input type="url" value={form.drive_pasta_url} onChange={set('drive_pasta_url')}
-                placeholder="https://drive.google.com/drive/folders/..."
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Pasta específica deste projeto no Drive da empresa.</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Responsável</label>

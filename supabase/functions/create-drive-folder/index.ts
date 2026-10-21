@@ -93,12 +93,15 @@ serve(async (req) => {
       })
     }
 
-    const { project_id, project_title, company_id } = await req.json()
+    const { project_id, project_title, numero_orcamento, company_id } = await req.json()
     if (!project_id || !project_title || !company_id) {
       return new Response(JSON.stringify({ error: 'Parâmetros obrigatórios: project_id, project_title, company_id' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+    const folderName = numero_orcamento
+      ? `${numero_orcamento} - ${project_title}`
+      : project_title
 
     // Verificar que o projeto pertence à empresa informada
     const { data: projectCheck, error: projCheckErr } = await supabase
@@ -159,7 +162,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        name: project_title,
+        name: folderName,
         mimeType: 'application/vnd.google-apps.folder',
         parents: [parentId],
       }),
