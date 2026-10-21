@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   FolderIcon, UsersIcon, Bars3Icon, XMarkIcon,
   ArrowRightOnRectangleIcon, ChartBarIcon, BuildingOffice2Icon,
-  ChevronDownIcon, HomeIcon, Cog6ToothIcon,
+  ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon,
+  HomeIcon, Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -79,6 +80,17 @@ export default function Layout({ children }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebar_collapsed') === '1' } catch { return false }
+  })
+
+  function toggleCollapsed() {
+    setCollapsed((v) => {
+      const next = !v
+      try { localStorage.setItem('sidebar_collapsed', next ? '1' : '0') } catch {}
+      return next
+    })
+  }
 
   async function handleSignOut() {
     await signOut()
@@ -87,96 +99,151 @@ export default function Layout({ children }) {
 
   const allowed = navItems.filter((item) => item.roles.includes(profile?.perfil))
   const isSuperAdmin = profile?.perfil === 'super_admin'
+  const logoLetter = (currentCompany?.nome ?? 'A')[0]
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Brand header */}
-      <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700/60">
-        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-3">App Esquadrias</p>
-        <div className="flex items-center gap-2.5">
-          {currentCompany?.logo_url ? (
-            <img
-              src={currentCompany.logo_url}
-              alt={currentCompany.nome}
-              className="h-8 w-8 object-contain rounded flex-shrink-0"
-            />
+  // Sidebar content reutilizável — modo overlay (mobile) sempre expandido
+  function SidebarContent({ forceExpanded = false }) {
+    const isExpanded = forceExpanded || !collapsed
+
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Brand header */}
+        <div className={`border-b border-gray-200 dark:border-gray-700/60 flex-shrink-0 ${isExpanded ? 'px-4 py-4' : 'px-2 py-4'}`}>
+          {isExpanded ? (
+            <>
+              <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-3">App Esquadrias</p>
+              <div className="flex items-center gap-2.5">
+                {currentCompany?.logo_url
+                  ? <img src={currentCompany.logo_url} alt={currentCompany.nome} className="h-8 w-8 object-contain rounded flex-shrink-0" />
+                  : <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-xs font-bold">{logoLetter}</span>
+                    </div>
+                }
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate leading-tight">
+                    {currentCompany?.nome ?? 'App Esquadrias'}
+                  </p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500">Controle de Projetos</p>
+                </div>
+              </div>
+            </>
           ) : (
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">
-                {(currentCompany?.nome ?? 'A')[0]}
-              </span>
+            <div className="flex justify-center">
+              {currentCompany?.logo_url
+                ? <img src={currentCompany.logo_url} alt={currentCompany.nome} className="h-8 w-8 object-contain rounded" />
+                : <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">{logoLetter}</span>
+                  </div>
+              }
             </div>
           )}
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate leading-tight">
-              {currentCompany?.nome ?? 'App Esquadrias'}
-            </p>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500">Controle de Projetos</p>
-          </div>
+        </div>
+
+        {/* Nav */}
+        <nav className={`flex-1 py-4 space-y-0.5 ${isExpanded ? 'px-3' : 'px-2'}`}>
+          {allowed.map(({ to, label, icon: Icon }) => {
+            const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to))
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setSidebarOpen(false)}
+                title={!isExpanded ? label : undefined}
+                className={`flex items-center rounded-lg font-medium transition-colors ${
+                  isExpanded ? 'gap-3 px-3 py-2.5 text-[15px]' : 'justify-center px-0 py-3'
+                } ${
+                  active
+                    ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-400'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                {isExpanded && label}
+              </Link>
+            )
+          })}
+
+          <Link
+            to="/configuracoes"
+            onClick={() => setSidebarOpen(false)}
+            title={!isExpanded ? 'Configurações' : undefined}
+            className={`flex items-center rounded-lg font-medium transition-colors ${
+              isExpanded ? 'gap-3 px-3 py-2.5 text-[15px]' : 'justify-center px-0 py-3'
+            } ${
+              location.pathname === '/configuracoes'
+                ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-400'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+          >
+            <Cog6ToothIcon className={`w-5 h-5 flex-shrink-0 ${location.pathname === '/configuracoes' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+            {isExpanded && 'Configurações'}
+          </Link>
+        </nav>
+
+        {/* User + sign out */}
+        <div className={`border-t border-gray-200 dark:border-gray-700/60 py-3 flex-shrink-0 ${isExpanded ? 'px-3' : 'px-2'}`}>
+          {isExpanded ? (
+            <>
+              <div className="px-3 py-2.5 mb-1 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <p className="text-[15px] font-semibold text-gray-800 dark:text-gray-200 truncate">{profile?.nome}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">{profile?.perfil?.replace('_', ' ')}</p>
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[15px] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              >
+                <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                Sair
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-1">
+              <div
+                title={profile?.nome}
+                className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center cursor-default"
+              >
+                <span className="text-xs font-bold text-blue-700 dark:text-blue-400">
+                  {(profile?.nome ?? 'U')[0]}
+                </span>
+              </div>
+              <button
+                onClick={handleSignOut}
+                title="Sair"
+                className="p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-red-500 transition-colors"
+              >
+                <ArrowRightOnRectangleIcon className="w-5 h-5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {allowed.map(({ to, label, icon: Icon }) => {
-          const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to))
-          return (
-            <Link
-              key={to}
-              to={to}
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] font-medium transition-colors ${
-                active
-                  ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-400'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-            >
-              <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
-              {label}
-            </Link>
-          )
-        })}
-
-        {/* Settings — always visible */}
-        <Link
-          to="/configuracoes"
-          onClick={() => setSidebarOpen(false)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] font-medium transition-colors ${
-            location.pathname === '/configuracoes'
-              ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-400'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          <Cog6ToothIcon className={`w-5 h-5 flex-shrink-0 ${location.pathname === '/configuracoes' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
-          Configurações
-        </Link>
-      </nav>
-
-      {/* User + sign out */}
-      <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-700/60">
-        <div className="px-3 py-2.5 mb-1 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-          <p className="text-[15px] font-semibold text-gray-800 dark:text-gray-200 truncate">{profile?.nome}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">{profile?.perfil?.replace('_', ' ')}</p>
-        </div>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[15px] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-        >
-          <ArrowRightOnRectangleIcon className="w-5 h-5" />
-          Sair
-        </button>
-      </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Sidebar desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700/60 flex-shrink-0">
+      {/* Sidebar desktop — colapsável */}
+      <aside
+        className={`hidden md:flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700/60 flex-shrink-0 relative transition-all duration-200 ${
+          collapsed ? 'w-16' : 'w-64'
+        }`}
+      >
         <SidebarContent />
+
+        {/* Botão colapsar/expandir */}
+        <button
+          onClick={toggleCollapsed}
+          title={collapsed ? 'Expandir menu' : 'Minimizar menu'}
+          className="absolute -right-3 top-6 z-10 w-6 h-6 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 transition-colors"
+        >
+          {collapsed
+            ? <ChevronRightIcon className="w-3.5 h-3.5" />
+            : <ChevronLeftIcon className="w-3.5 h-3.5" />
+          }
+        </button>
       </aside>
 
-      {/* Sidebar mobile overlay */}
+      {/* Sidebar mobile overlay — sempre expandida */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden">
           <div className="fixed inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
@@ -187,7 +254,7 @@ export default function Layout({ children }) {
             >
               <XMarkIcon className="w-5 h-5" />
             </button>
-            <SidebarContent />
+            <SidebarContent forceExpanded />
           </aside>
         </div>
       )}
