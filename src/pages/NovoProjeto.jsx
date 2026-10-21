@@ -98,7 +98,7 @@ export default function NovoProjeto() {
         body: JSON.stringify({
           project_id: project.id,
           project_title: titulo,
-          numero_orcamento: numeroOrcamento || null,
+          cliente: cliente || null,
           company_id: companyId,
         }),
       }).then(async (res) => {
