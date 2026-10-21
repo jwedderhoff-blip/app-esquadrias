@@ -4,10 +4,34 @@ import {
   FolderIcon, UsersIcon, Bars3Icon, XMarkIcon,
   ArrowRightOnRectangleIcon, ChartBarIcon, BuildingOffice2Icon,
   ChevronDownIcon, HomeIcon, Cog6ToothIcon,
+  SunIcon, MoonIcon, ComputerDesktopIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { supabase } from '../../lib/supabase'
 import NotificationBell from './NotificationBell'
+
+const THEME_CYCLE = ['system', 'light', 'dark']
+const THEME_ICON = { system: ComputerDesktopIcon, light: SunIcon, dark: MoonIcon }
+const THEME_LABEL = { system: 'Automático', light: 'Claro', dark: 'Escuro' }
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+  const Icon = THEME_ICON[theme] ?? ComputerDesktopIcon
+  function cycle() {
+    const next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length]
+    setTheme(next)
+  }
+  return (
+    <button
+      onClick={cycle}
+      title={`Tema: ${THEME_LABEL[theme] ?? theme}`}
+      className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+    >
+      <Icon className="w-5 h-5" />
+    </button>
+  )
+}
 
 const navItems = [
   { to: '/', label: 'Projetos', icon: FolderIcon, roles: ['operacional', 'comercial', 'administrador', 'super_admin'] },
@@ -204,6 +228,7 @@ export default function Layout({ children }) {
           </Link>
           <div className="flex items-center gap-2">
             {isSuperAdmin && <CompanySwitcher />}
+            <ThemeToggle />
             <NotificationBell />
           </div>
         </header>
@@ -219,6 +244,7 @@ export default function Layout({ children }) {
           </Link>
           <div className="flex items-center gap-3">
             {isSuperAdmin && <CompanySwitcher />}
+            <ThemeToggle />
             <NotificationBell />
           </div>
         </header>
