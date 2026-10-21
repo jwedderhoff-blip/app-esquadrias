@@ -24,9 +24,9 @@ function Toggle({ checked, onChange }) {
 }
 
 const THEMES = [
-  { key: 'light',  label: 'Claro',   Icon: SunIcon,             desc: 'Interface em modo claro' },
-  { key: 'dark',   label: 'Escuro',  Icon: MoonIcon,            desc: 'Interface em modo escuro' },
-  { key: 'system', label: 'Sistema', Icon: ComputerDesktopIcon, desc: 'Segue o SO' },
+  { key: 'system', label: 'Automático', Icon: ComputerDesktopIcon, desc: 'Segue o celular/PC (padrão)' },
+  { key: 'light',  label: 'Claro',      Icon: SunIcon,             desc: 'Sempre modo claro' },
+  { key: 'dark',   label: 'Escuro',     Icon: MoonIcon,            desc: 'Sempre modo escuro' },
 ]
 
 export default function Configuracoes() {
