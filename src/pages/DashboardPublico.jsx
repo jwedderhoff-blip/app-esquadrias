@@ -166,9 +166,20 @@ function ProjectCard({ p, isDark }) {
         )
       })()}
 
-      <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-2 text-right">
-        {format(new Date(updated), "dd/MM/yy", { locale: ptBR })}
-      </p>
+      {p.ultima_alteracao ? (
+        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate">
+            ✏️ {p.ultima_alteracao.nome}
+          </span>
+          <span className="text-[10px] text-gray-300 dark:text-gray-600 flex-shrink-0">
+            {format(new Date(p.ultima_alteracao.em), "dd/MM/yy HH:mm", { locale: ptBR })}
+          </span>
+        </div>
+      ) : (
+        <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-2 text-right">
+          {format(new Date(updated), "dd/MM/yy", { locale: ptBR })}
+        </p>
+      )}
     </div>
   )
 }

@@ -46,8 +46,9 @@ serve(async (req) => {
 
     let checklistStats: { project_id: string; concluido: boolean }[] = []
     let prazosData: { project_id: string; dados: Record<string, string> | null }[] = []
+    let activityData: { project_id: string; criado_em: string; users: { nome: string } | null }[] = []
     if (projectIds.length) {
-      const [statsRes, prazosRes] = await Promise.all([
+      const [statsRes, prazosRes, activityRes] = await Promise.all([
         supabase
           .from('checklist_items')
           .select('project_id, concluido')
@@ -58,9 +59,15 @@ serve(async (req) => {
           .in('project_id', projectIds)
           .eq('descricao', 'Prazo solicitado pelo cliente')
           .eq('etapa', 'pedido'),
+        supabase
+          .from('activity_log')
+          .select('project_id, criado_em, users!usuario_id(nome)')
+          .in('project_id', projectIds)
+          .order('criado_em', { ascending: false }),
       ])
       checklistStats = statsRes.data || []
       prazosData = prazosRes.data || []
+      activityData = (activityRes.data || []) as typeof activityData
     }
 
     const statsByProject: Record<string, { total: number; done: number }> = {}
@@ -75,11 +82,23 @@ serve(async (req) => {
       prazoByProject[item.project_id] = item.dados?.prazo ?? null
     }
 
+    // Última alteração por projeto (primeiro registro = mais recente, pois ordenado DESC)
+    const lastActivityByProject: Record<string, { nome: string; em: string }> = {}
+    for (const item of activityData) {
+      if (!lastActivityByProject[item.project_id]) {
+        lastActivityByProject[item.project_id] = {
+          nome: item.users?.nome ?? 'Usuário',
+          em: item.criado_em,
+        }
+      }
+    }
+
     const projectsWithStats = (projects || []).map((p) => ({
       ...p,
       checklist_total: statsByProject[p.id]?.total ?? 0,
       checklist_done: statsByProject[p.id]?.done ?? 0,
       prazo_pedido: prazoByProject[p.id] ?? null,
+      ultima_alteracao: lastActivityByProject[p.id] ?? null,
     }))
 
     return new Response(
