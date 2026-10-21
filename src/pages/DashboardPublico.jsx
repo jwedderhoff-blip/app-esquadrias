@@ -196,7 +196,7 @@ function ProjectCard({ p, isDark }) {
               {format(new Date(p.ultima_alteracao.em), "dd/MM/yy HH:mm", { locale: ptBR })}
             </span>
           </div>
-          <p className="text-[10px] text-gray-300 dark:text-gray-600 truncate mt-0.5">
+          <p className="text-[10px] text-gray-400 dark:text-gray-400 truncate mt-0.5">
             {getAcaoLabel(p.ultima_alteracao.acao, p.ultima_alteracao.detalhe)}
           </p>
         </div>
