@@ -106,6 +106,23 @@ function StagePipeline({ projects }) {
   )
 }
 
+function getAcaoLabel(acao, detalhe) {
+  if (acao === 'etapa_avancada') {
+    const m = detalhe?.match(/para "(.+?)"/)
+    return m ? `→ ${m[1]}` : 'Etapa avançada'
+  }
+  if (acao === 'projeto_editado') return detalhe ?? 'Dados editados'
+  if (acao === 'projeto_criado') return 'Projeto criado'
+  return detalhe ?? acao ?? ''
+}
+
+function getAcaoIcon(acao) {
+  if (acao === 'etapa_avancada') return '🔄'
+  if (acao === 'projeto_editado') return '✏️'
+  if (acao === 'projeto_criado') return '🆕'
+  return '📝'
+}
+
 function ProjectCard({ p, isDark }) {
   const e = ETAPA_MAP[p.etapa_atual] || { label: p.etapa_atual, color: '#94a3b8', bg: '#f8fafc', text: '#475569', darkBg: '#1e293b', darkText: '#94a3b8' }
   const stageIdx = ETAPAS.findIndex((et) => et.key === p.etapa_atual)
@@ -167,13 +184,21 @@ function ProjectCard({ p, isDark }) {
       })()}
 
       {p.ultima_alteracao ? (
-        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate">
-            ✏️ {p.ultima_alteracao.nome}
-          </span>
-          <span className="text-[10px] text-gray-300 dark:text-gray-600 flex-shrink-0">
-            {format(new Date(p.ultima_alteracao.em), "dd/MM/yy HH:mm", { locale: ptBR })}
-          </span>
+        <div
+          className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700"
+          title={p.ultima_alteracao.detalhe ?? undefined}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate">
+              {getAcaoIcon(p.ultima_alteracao.acao)} {p.ultima_alteracao.nome}
+            </span>
+            <span className="text-[10px] text-gray-300 dark:text-gray-600 flex-shrink-0">
+              {format(new Date(p.ultima_alteracao.em), "dd/MM/yy HH:mm", { locale: ptBR })}
+            </span>
+          </div>
+          <p className="text-[10px] text-gray-300 dark:text-gray-600 truncate mt-0.5">
+            {getAcaoLabel(p.ultima_alteracao.acao, p.ultima_alteracao.detalhe)}
+          </p>
         </div>
       ) : (
         <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-2 text-right">

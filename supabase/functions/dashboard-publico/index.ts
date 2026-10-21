@@ -46,7 +46,7 @@ serve(async (req) => {
 
     let checklistStats: { project_id: string; concluido: boolean }[] = []
     let prazosData: { project_id: string; dados: Record<string, string> | null }[] = []
-    let activityData: { project_id: string; criado_em: string; users: { nome: string } | null }[] = []
+    let activityData: { project_id: string; criado_em: string; acao: string; detalhe: string | null; users: { nome: string } | null }[] = []
     if (projectIds.length) {
       const [statsRes, prazosRes, activityRes] = await Promise.all([
         supabase
@@ -61,7 +61,7 @@ serve(async (req) => {
           .eq('etapa', 'pedido'),
         supabase
           .from('activity_log')
-          .select('project_id, criado_em, users!usuario_id(nome)')
+          .select('project_id, criado_em, acao, detalhe, users!usuario_id(nome)')
           .in('project_id', projectIds)
           .order('criado_em', { ascending: false }),
       ])
@@ -83,12 +83,14 @@ serve(async (req) => {
     }
 
     // Última alteração por projeto (primeiro registro = mais recente, pois ordenado DESC)
-    const lastActivityByProject: Record<string, { nome: string; em: string }> = {}
+    const lastActivityByProject: Record<string, { nome: string; em: string; acao: string; detalhe: string | null }> = {}
     for (const item of activityData) {
       if (!lastActivityByProject[item.project_id]) {
         lastActivityByProject[item.project_id] = {
           nome: item.users?.nome ?? 'Usuário',
           em: item.criado_em,
+          acao: item.acao,
+          detalhe: item.detalhe ?? null,
         }
       }
     }
