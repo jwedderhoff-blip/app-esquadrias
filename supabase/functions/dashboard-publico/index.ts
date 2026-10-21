@@ -101,7 +101,11 @@ serve(async (req) => {
       checklist_done: statsByProject[p.id]?.done ?? 0,
       prazo_pedido: prazoByProject[p.id] ?? null,
       ultima_alteracao: lastActivityByProject[p.id] ?? null,
-    }))
+    })).sort((a, b) => {
+      const aDate = a.ultima_alteracao?.em ?? a.atualizado_em ?? a.criado_em
+      const bDate = b.ultima_alteracao?.em ?? b.atualizado_em ?? b.criado_em
+      return new Date(bDate).getTime() - new Date(aDate).getTime()
+    })
 
     return new Response(
       JSON.stringify({ company, projects: projectsWithStats, generated_at: new Date().toISOString() }),
