@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
 export default function NovoProjeto() {
-  const { session, profile } = useAuth()
+  const { session, profile, effectiveCompanyId } = useAuth()
   const navigate = useNavigate()
   const [numeroOrcamento, setNumeroOrcamento] = useState('')
   const [numeroPedido, setNumeroPedido] = useState('')
@@ -30,12 +30,17 @@ export default function NovoProjeto() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    const companyId = effectiveCompanyId()
+    if (!companyId) {
+      toast.error('Selecione uma empresa antes de criar o projeto.')
+      return
+    }
     setLoading(true)
 
     // Criar projeto
     const { data: project, error } = await supabase
       .from('projects')
-      .insert({ numero_orcamento: numeroOrcamento || null, numero_pedido: numeroPedido || null, titulo, cliente, cliente_fone: clienteFone || null, cliente_email: clienteEmail || null, cliente_cpf_cnpj: clienteCpfCnpj || null, criado_por: responsavel || session.user.id, etapa_atual: 'pedido', company_id: profile?.company_id })
+      .insert({ numero_orcamento: numeroOrcamento || null, numero_pedido: numeroPedido || null, titulo, cliente, cliente_fone: clienteFone || null, cliente_email: clienteEmail || null, cliente_cpf_cnpj: clienteCpfCnpj || null, criado_por: responsavel || session.user.id, etapa_atual: 'pedido', company_id: companyId })
       .select()
       .single()
 
@@ -81,7 +86,7 @@ export default function NovoProjeto() {
     navigate(`/projetos/${project.id}`)
 
     // Criar pasta no Drive em segundo plano (não bloqueia a navegação)
-    if (profile?.company_id) {
+    if (companyId) {
       const { data: { session: s } } = await supabase.auth.getSession()
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-drive-folder`, {
         method: 'POST',
@@ -93,7 +98,7 @@ export default function NovoProjeto() {
         body: JSON.stringify({
           project_id: project.id,
           project_title: titulo,
-          company_id: profile.company_id,
+          company_id: companyId,
         }),
       }).then(async (res) => {
         const data = await res.json()
