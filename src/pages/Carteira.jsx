@@ -86,14 +86,24 @@ export default function Carteira() {
       }
 
       const enriched = (projectsData || []).map((p) => {
-        const allItems = (checklistItems || []).filter((i) => i.project_id === p.id)
-        const etapaItems = allItems.filter((i) => i.etapa === p.etapa_atual)
+        const etapaItems = (checklistItems || []).filter(
+          (i) => i.project_id === p.id && i.etapa === p.etapa_atual
+        )
+        const etapaDone = etapaItems.filter((i) => i.concluido).length
+        const etapaTotal = etapaItems.length
+        const etapaPct = etapaTotal > 0 ? Math.round((etapaDone / etapaTotal) * 100) : 0
+
+        // Progresso no pipeline: (índice da etapa + % do checklist atual) / total de etapas
+        const stageIdx = ETAPAS.findIndex((e) => e.key === p.etapa_atual)
+        const partial = etapaTotal > 0 ? etapaDone / etapaTotal : 0
+        const pipelinePct = Math.min(100, Math.round(((Math.max(stageIdx, 0) + partial) / ETAPAS.length) * 100))
+
         return {
           ...p,
-          checklistDone: allItems.filter((i) => i.concluido).length,
-          checklistTotal: allItems.length,
-          etapaDone: etapaItems.filter((i) => i.concluido).length,
-          etapaTotal: etapaItems.length,
+          pipelinePct,
+          etapaDone,
+          etapaTotal,
+          etapaPct,
           prazo: prazoMap[p.id] ?? null,
         }
       })
@@ -218,33 +228,33 @@ export default function Carteira() {
                     <td className="px-5 py-3.5"><EtapaBadge etapa={p.etapa_atual} /></td>
                     <td className="px-5 py-3.5"><PrazoCell prazo={p.prazo} /></td>
                     <td className="px-5 py-3.5 hidden md:table-cell">
-                      {p.checklistTotal > 0 ? (
+                      {p.etapaTotal > 0 || p.pipelinePct > 0 ? (
                         <div className="min-w-[120px]">
-                          {/* Total geral */}
+                          {/* Azul = progresso no pipeline (posição da etapa) */}
                           <div className="flex items-center gap-2 mb-1">
                             <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-blue-500 rounded-full transition-all"
-                                style={{ width: `${Math.round((p.checklistDone / p.checklistTotal) * 100)}%` }}
+                                style={{ width: `${p.pipelinePct}%` }}
                               />
                             </div>
                             <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 w-8 text-right">
-                              {Math.round((p.checklistDone / p.checklistTotal) * 100)}%
+                              {p.pipelinePct}%
                             </span>
                           </div>
-                          <p className="text-[11px] text-gray-400 dark:text-gray-500">Total: {p.checklistDone}/{p.checklistTotal}</p>
-                          {/* Etapa atual */}
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500">Processo geral</p>
+                          {/* Verde = % do checklist da etapa atual */}
                           {p.etapaTotal > 0 && (
                             <div className="mt-1.5">
                               <div className="flex items-center gap-2 mb-0.5">
                                 <div className="flex-1 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-emerald-500 rounded-full transition-all"
-                                    style={{ width: `${Math.round((p.etapaDone / p.etapaTotal) * 100)}%` }}
+                                    style={{ width: `${p.etapaPct}%` }}
                                   />
                                 </div>
                                 <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 w-8 text-right">
-                                  {Math.round((p.etapaDone / p.etapaTotal) * 100)}%
+                                  {p.etapaPct}%
                                 </span>
                               </div>
                               <p className="text-[11px] text-gray-400 dark:text-gray-500">Etapa: {p.etapaDone}/{p.etapaTotal}</p>
