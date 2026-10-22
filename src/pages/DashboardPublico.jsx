@@ -336,12 +336,14 @@ export default function DashboardPublico() {
               {/* Crédito */}
               <div className="hidden sm:flex flex-col items-end text-right">
                 <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">Desenvolvido por</p>
-                <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Jeferson Wedderhoff</p>
+                <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Meridio Soluções</p>
                 <a
-                  href="mailto:jeferson.wedderhoff@gmail.com"
-                  className="text-[11px] text-blue-500 hover:text-blue-700 transition-colors"
+                  href="https://wa.me/5547999962800"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-green-500 hover:text-green-600 transition-colors"
                 >
-                  jeferson.wedderhoff@gmail.com
+                  +55 (47) 99996-2800
                 </a>
               </div>
             </div>
