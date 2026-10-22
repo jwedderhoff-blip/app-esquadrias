@@ -216,20 +216,33 @@ export default function DashboardPublico() {
   const [error, setError] = useState(null)
   const [filterEtapa, setFilterEtapa] = useState('todas')
 
-  // Tema local (independente do ThemeProvider do app)
+  // Tema — controla document.documentElement para que dark: do Tailwind funcione corretamente
   const [theme, setThemeState] = useState(() => {
     try { return localStorage.getItem('dash_theme') ?? 'system' } catch { return 'system' }
   })
-  const [isDark, setIsDark] = useState(false)
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'))
 
   useEffect(() => {
-    if (theme === 'dark') { setIsDark(true); return }
-    if (theme === 'light') { setIsDark(false); return }
+    const html = document.documentElement
+    // guarda o estado original do app para restaurar ao sair
+    const appWasDark = html.classList.contains('dark')
+
+    function applyDark(val) {
+      html.classList.toggle('dark', val)
+      setIsDark(val)
+    }
+
+    if (theme === 'dark') { applyDark(true); return () => html.classList.toggle('dark', appWasDark) }
+    if (theme === 'light') { applyDark(false); return () => html.classList.toggle('dark', appWasDark) }
+
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    setIsDark(mq.matches)
-    const handler = (e) => setIsDark(e.matches)
+    applyDark(mq.matches)
+    const handler = (e) => applyDark(e.matches)
     mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
+    return () => {
+      mq.removeEventListener('change', handler)
+      html.classList.toggle('dark', appWasDark)
+    }
   }, [theme])
 
   function cycleTheme() {
@@ -249,18 +262,14 @@ export default function DashboardPublico() {
   const ThemeIcon = THEME_ICON[theme] ?? ComputerDesktopIcon
 
   if (loading) return (
-    <div className={isDark ? 'dark' : ''}>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-        <div className="text-gray-400 text-sm animate-pulse">Carregando...</div>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="text-gray-400 text-sm animate-pulse">Carregando...</div>
     </div>
   )
 
   if (error) return (
-    <div className={isDark ? 'dark' : ''}>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">{error}</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <p className="text-gray-500 text-sm">{error}</p>
     </div>
   )
 
@@ -294,8 +303,7 @@ export default function DashboardPublico() {
   ]
 
   return (
-    <div className={isDark ? 'dark' : ''}>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors" style={{ fontFamily: "'Inter', sans-serif" }}>
 
         {/* Header */}
         <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700 shadow-sm">
@@ -425,6 +433,5 @@ export default function DashboardPublico() {
           <p className="text-center text-xs text-gray-300 dark:text-gray-700 pb-4">App Esquadrias</p>
         </div>
       </div>
-    </div>
   )
 }

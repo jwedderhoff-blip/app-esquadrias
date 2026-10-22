@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PlusIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ETAPAS } from '../lib/constants'
@@ -123,15 +123,28 @@ export default function Carteira() {
             {projects.length} projeto{projects.length !== 1 ? 's' : ''}
           </p>
         </div>
-        {canCreate && (
-          <Link
-            to="/projetos/novo"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
-          >
-            <PlusIcon className="w-4 h-4" />
-            Novo projeto
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {companyId && (
+            <a
+              href={`/dashboard/${companyId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition border border-gray-200 dark:border-gray-600"
+            >
+              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+              Dashboard público
+            </a>
+          )}
+          {canCreate && (
+            <Link
+              to="/projetos/novo"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Novo projeto
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
