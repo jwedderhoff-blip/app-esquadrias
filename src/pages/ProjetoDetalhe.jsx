@@ -228,7 +228,7 @@ export default function ProjetoDetalhe() {
       .select('*')
       .eq('project_id', id)
       .eq('etapa', etapa)
-      .order('id')
+      .order('ordem')
 
     if (existing?.length) {
       setChecklistItems(existing)
@@ -250,9 +250,10 @@ export default function ProjetoDetalhe() {
           etapa,
           descricao: t.descricao,
           requer_documento: t.requer_documento ?? false,
+          ordem: t.ordem,
         })))
         .select()
-      setChecklistItems(inserted || [])
+      setChecklistItems((inserted || []).sort((a, b) => a.ordem - b.ordem))
     } else {
       setChecklistItems([])
     }
@@ -280,7 +281,7 @@ export default function ProjetoDetalhe() {
       .select('*')
       .eq('project_id', id)
       .eq('etapa', etapa)
-      .order('id')
+      .order('ordem')
     setChecklistItems(data || [])
   }
 
