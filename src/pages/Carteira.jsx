@@ -86,13 +86,14 @@ export default function Carteira() {
       }
 
       const enriched = (projectsData || []).map((p) => {
-        const items = (checklistItems || []).filter(
-          (i) => i.project_id === p.id && i.etapa === p.etapa_atual
-        )
+        const allItems = (checklistItems || []).filter((i) => i.project_id === p.id)
+        const etapaItems = allItems.filter((i) => i.etapa === p.etapa_atual)
         return {
           ...p,
-          checklistDone: items.filter((i) => i.concluido).length,
-          checklistTotal: items.length,
+          checklistDone: allItems.filter((i) => i.concluido).length,
+          checklistTotal: allItems.length,
+          etapaDone: etapaItems.filter((i) => i.concluido).length,
+          etapaTotal: etapaItems.length,
           prazo: prazoMap[p.id] ?? null,
         }
       })
@@ -107,7 +108,8 @@ export default function Carteira() {
     const q = search.toLowerCase()
     const matchSearch = !search ||
       p.titulo.toLowerCase().includes(q) ||
-      p.cliente.toLowerCase().includes(q)
+      p.cliente.toLowerCase().includes(q) ||
+      (p.numero_pedido ?? '').toLowerCase().includes(q)
     const matchEtapa = !filterEtapa || p.etapa_atual === filterEtapa
     return matchSearch && matchEtapa
   })
@@ -138,7 +140,7 @@ export default function Carteira() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por título ou cliente..."
+            placeholder="Buscar por título, cliente ou número..."
             className="w-full pl-9 pr-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -171,7 +173,8 @@ export default function Carteira() {
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Projeto</th>
-                  <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Cliente</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Nº</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Cliente</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Etapa</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Prazo</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Checklist</th>
@@ -188,18 +191,52 @@ export default function Carteira() {
                         {p.titulo}
                       </Link>
                       {p.numero_pedido && (
-                        <span className="ml-2 text-xs font-mono text-blue-500">{p.numero_pedido}</span>
+                        <span className="ml-2 text-xs font-mono text-blue-500 sm:hidden">{p.numero_pedido}</span>
                       )}
-                      <p className="text-xs text-gray-400 dark:text-gray-500 sm:hidden mt-0.5">{p.cliente}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 md:hidden mt-0.5">{p.cliente}</p>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden sm:table-cell">{p.cliente}</td>
+                    <td className="px-4 py-3.5 hidden sm:table-cell">
+                      {p.numero_pedido
+                        ? <span className="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded">{p.numero_pedido}</span>
+                        : <span className="text-gray-300 dark:text-gray-600">—</span>
+                      }
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden md:table-cell">{p.cliente}</td>
                     <td className="px-5 py-3.5"><EtapaBadge etapa={p.etapa_atual} /></td>
                     <td className="px-5 py-3.5"><PrazoCell prazo={p.prazo} /></td>
                     <td className="px-5 py-3.5 hidden md:table-cell">
                       {p.checklistTotal > 0 ? (
-                        <div className="w-28">
-                          <ProgressBar value={p.checklistDone} max={p.checklistTotal} />
-                          <p className="text-xs text-gray-400 mt-0.5">{p.checklistDone}/{p.checklistTotal}</p>
+                        <div className="min-w-[120px]">
+                          {/* Total geral */}
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-blue-500 rounded-full transition-all"
+                                style={{ width: `${Math.round((p.checklistDone / p.checklistTotal) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 w-8 text-right">
+                              {Math.round((p.checklistDone / p.checklistTotal) * 100)}%
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500">Total: {p.checklistDone}/{p.checklistTotal}</p>
+                          {/* Etapa atual */}
+                          {p.etapaTotal > 0 && (
+                            <div className="mt-1.5">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <div className="flex-1 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-emerald-500 rounded-full transition-all"
+                                    style={{ width: `${Math.round((p.etapaDone / p.etapaTotal) * 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 w-8 text-right">
+                                  {Math.round((p.etapaDone / p.etapaTotal) * 100)}%
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-gray-400 dark:text-gray-500">Etapa: {p.etapaDone}/{p.etapaTotal}</p>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-gray-300 dark:text-gray-600">—</span>
