@@ -116,7 +116,7 @@ serve(async (req) => {
     // Buscar pasta-mãe da empresa
     const { data: company, error: compErr } = await supabase
       .from('companies')
-      .select('drive_folder_url, nome')
+      .select('drive_folder_id, nome')
       .eq('id', company_id)
       .single()
 
@@ -126,25 +126,18 @@ serve(async (req) => {
       })
     }
 
-    if (!company.drive_folder_url) {
+    if (!company.drive_folder_id) {
       return new Response(JSON.stringify({ error: 'Empresa sem pasta Drive configurada. Configure em Admin → Empresas.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Extrair ID da pasta-mãe da URL
-    const match = company.drive_folder_url.match(/\/folders\/([a-zA-Z0-9_-]+)/)
-    if (!match) {
-      return new Response(JSON.stringify({ error: 'URL do Drive inválida. Use o link de uma pasta do Google Drive.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-    const parentId = match[1]
+    const parentId = company.drive_folder_id
 
     // Autenticar com service account
-    const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+    const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY')
     if (!serviceAccountJson) {
-      return new Response(JSON.stringify({ error: 'GOOGLE_SERVICE_ACCOUNT_JSON não configurado nos secrets do Supabase.' }), {
+      return new Response(JSON.stringify({ error: 'GOOGLE_SERVICE_ACCOUNT_KEY não configurado nos secrets do Supabase.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
