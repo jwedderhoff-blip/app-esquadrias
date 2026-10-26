@@ -360,45 +360,37 @@ export default function DashboardPublico() {
 
         <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
-          {/* Cards + Donut */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 flex items-center gap-5 shadow-sm">
-              <DonutChart pct={globalPct} isDark={isDark} />
-              <div>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Visão geral</p>
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-600 dark:text-gray-300">{emAndamento} em andamento</span>
+          {/* 4 cards principais */}
+          {(() => {
+            const qtdContrato   = projects.filter((p) => p.etapa_atual === 'contrato').length
+            const qtdCompra     = projects.filter((p) => p.etapa_atual === 'compra_material').length
+            const qtdFabricacao = projects.filter((p) => p.etapa_atual === 'fabricacao').length
+            const qtdEntrega    = projects.filter((p) => p.etapa_atual === 'pronto_entrega').length
+            const cards = [
+              { label: 'Contrato Assinado',    value: qtdContrato,   color: 'from-violet-500 to-violet-600',   highlight: false },
+              { label: 'Compra de Material',   value: qtdCompra,     color: 'from-amber-500 to-orange-500',    highlight: false },
+              { label: 'Em Fabricação',        value: qtdFabricacao, color: 'from-blue-500 to-blue-700',       highlight: true  },
+              { label: 'Pronto para Entrega',  value: qtdEntrega,    color: 'from-emerald-500 to-green-600',   highlight: false },
+            ]
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {cards.map(({ label, value, color, highlight }) => (
+                  <div
+                    key={label}
+                    className={`bg-gradient-to-br ${color} rounded-2xl p-5 shadow-sm text-white flex flex-col justify-between ${highlight ? 'ring-4 ring-blue-300 dark:ring-blue-400 scale-[1.03] shadow-lg' : ''}`}
+                    style={highlight ? { transition: 'transform 0.2s' } : {}}
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-80 leading-snug">{label}</p>
+                    <p className="text-5xl font-extrabold mt-3 leading-none">{value}</p>
+                    <div className="mt-4 h-1.5 bg-white/30 rounded-full overflow-hidden">
+                      <div className="h-full bg-white rounded-full" style={{ width: total > 0 ? `${Math.round((value / total) * 100)}%` : '0%' }} />
+                    </div>
+                    <p className="text-[11px] opacity-60 mt-1">{total > 0 ? Math.round((value / total) * 100) : 0}% do total</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-600 dark:text-gray-300">{encerrados} encerrados</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
-                    <span className="text-xs text-gray-600 dark:text-gray-300">{total} total</span>
-                  </div>
-                </div>
+                ))}
               </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 shadow-sm text-white flex flex-col justify-between">
-              <p className="text-sm font-medium opacity-80">Em andamento</p>
-              <p className="text-4xl font-bold mt-2">{emAndamento}</p>
-              <div className="mt-3 h-1.5 bg-white/30 rounded-full overflow-hidden">
-                <div className="h-full bg-white rounded-full" style={{ width: total > 0 ? `${Math.round((emAndamento/total)*100)}%` : '0%' }} />
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-5 shadow-sm text-white flex flex-col justify-between">
-              <p className="text-sm font-medium opacity-80">Encerrados</p>
-              <p className="text-4xl font-bold mt-2">{encerrados}</p>
-              <div className="mt-3 h-1.5 bg-white/30 rounded-full overflow-hidden">
-                <div className="h-full bg-white rounded-full" style={{ width: total > 0 ? `${Math.round((encerrados/total)*100)}%` : '0%' }} />
-              </div>
-            </div>
-          </div>
+            )
+          })()}
 
           {/* Pipeline */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
