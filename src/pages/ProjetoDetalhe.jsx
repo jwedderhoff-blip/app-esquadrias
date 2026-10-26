@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, EllipsisVerticalIcon, PencilSquareIcon, TrashIcon, XMarkIcon, PlusIcon, BanknotesIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, EllipsisVerticalIcon, PencilSquareIcon, TrashIcon, XMarkIcon, PlusIcon, BanknotesIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ETAPAS, ETAPA_INDEX } from '../lib/constants'
@@ -213,6 +213,9 @@ export default function ProjetoDetalhe() {
   const [modalPagamento, setModalPagamento] = useState(false)
   const [formPagamento, setFormPagamento] = useState({ descricao: '', valor: '', data_pagamento: '' })
   const [savingPagamento, setSavingPagamento] = useState(false)
+  const [financeiroAberto, setFinanceiroAberto] = useState(() => {
+    try { return localStorage.getItem('financeiro_aberto') !== 'false' } catch { return true }
+  })
 
   const canEdit = ['administrador', 'comercial', 'super_admin'].includes(profile?.perfil)
   const canDelete = ['administrador', 'super_admin'].includes(profile?.perfil)
@@ -665,20 +668,42 @@ export default function ProjetoDetalhe() {
         const saldo = (project.valor_contrato ?? 0) - totalRecebido
         const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
         return (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 mb-6">
+            {/* Cabeçalho colapsável */}
+            <button
+              type="button"
+              onClick={() => setFinanceiroAberto((v) => { const n = !v; try { localStorage.setItem('financeiro_aberto', String(n)) } catch {} return n })}
+              className="w-full flex items-center justify-between px-5 py-4 text-left"
+            >
               <div className="flex items-center gap-2">
                 <BanknotesIcon className="w-4 h-4 text-green-500" />
                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Financeiro</span>
+                {!financeiroAberto && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                    {fmtBRL(totalRecebido)} recebido
+                    {saldo > 0 ? ` · ${fmtBRL(saldo)} pendente` : ' · quitado'}
+                  </span>
+                )}
               </div>
-              {canEdit && (
-                <button onClick={() => setModalPagamento(true)}
-                  className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                  <PlusIcon className="w-3.5 h-3.5" />
-                  Registrar pagamento
-                </button>
-              )}
-            </div>
+              <div className="flex items-center gap-3">
+                {canEdit && financeiroAberto && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setModalPagamento(true) }}
+                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <PlusIcon className="w-3.5 h-3.5" />
+                    Registrar pagamento
+                  </button>
+                )}
+                {financeiroAberto
+                  ? <ChevronUpIcon className="w-4 h-4 text-gray-400" />
+                  : <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+                }
+              </div>
+            </button>
+
+            {financeiroAberto && <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-800 pt-4">
 
             {/* Valor do contrato */}
             <div className="flex items-center gap-2 mb-3">
@@ -753,6 +778,7 @@ export default function ProjetoDetalhe() {
             {pagamentos.length === 0 && (
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Nenhum pagamento registrado ainda.</p>
             )}
+            </div>}
           </div>
         )
       })()}
