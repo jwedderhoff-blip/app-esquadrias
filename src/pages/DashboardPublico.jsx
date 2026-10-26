@@ -363,7 +363,7 @@ export default function DashboardPublico() {
           {/* 4 cards principais */}
           {(() => {
             const qtdContrato   = projects.filter((p) => p.etapa_atual === 'contrato').length
-            const qtdCompra     = projects.filter((p) => p.etapa_atual === 'compra_material').length
+            const qtdCompra     = projects.filter((p) => p.etapa_atual === 'compra_material' || p.compra_material_iniciada).length
             const qtdFabricacao = projects.filter((p) => p.etapa_atual === 'fabricacao').length
             const qtdEntrega    = projects.filter((p) => p.etapa_atual === 'pronto_entrega').length
             const cards = [

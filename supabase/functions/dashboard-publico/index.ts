@@ -47,8 +47,9 @@ serve(async (req) => {
     let checklistStats: { project_id: string; concluido: boolean }[] = []
     let prazosData: { project_id: string; dados: Record<string, string> | null }[] = []
     let activityData: { project_id: string; criado_em: string; acao: string; detalhe: string | null; users: { nome: string } | null }[] = []
+    let compraIniciadaIds: Set<string> = new Set()
     if (projectIds.length) {
-      const [statsRes, prazosRes, activityRes] = await Promise.all([
+      const [statsRes, prazosRes, activityRes, compraRes] = await Promise.all([
         supabase
           .from('checklist_items')
           .select('project_id, concluido')
@@ -64,10 +65,17 @@ serve(async (req) => {
           .select('project_id, criado_em, acao, detalhe, users!usuario_id(nome)')
           .in('project_id', projectIds)
           .order('criado_em', { ascending: false }),
+        supabase
+          .from('checklist_items')
+          .select('project_id')
+          .in('project_id', projectIds)
+          .eq('descricao', 'Orçamentos realizados')
+          .eq('concluido', true),
       ])
       checklistStats = statsRes.data || []
       prazosData = prazosRes.data || []
       activityData = (activityRes.data || []) as typeof activityData
+      compraIniciadaIds = new Set((compraRes.data || []).map((r: { project_id: string }) => r.project_id))
     }
 
     const statsByProject: Record<string, { total: number; done: number }> = {}
@@ -101,6 +109,7 @@ serve(async (req) => {
       checklist_done: statsByProject[p.id]?.done ?? 0,
       prazo_pedido: prazoByProject[p.id] ?? null,
       ultima_alteracao: lastActivityByProject[p.id] ?? null,
+      compra_material_iniciada: compraIniciadaIds.has(p.id),
     })).sort((a, b) => {
       const aDate = a.ultima_alteracao?.em ?? a.atualizado_em ?? a.criado_em
       const bDate = b.ultima_alteracao?.em ?? b.atualizado_em ?? b.criado_em
