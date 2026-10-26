@@ -4,11 +4,12 @@ import {
   FolderIcon, UsersIcon, Bars3Icon, XMarkIcon,
   ArrowRightOnRectangleIcon, ChartBarIcon, BuildingOffice2Icon,
   ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon,
-  HomeIcon, Cog6ToothIcon,
+  HomeIcon, Cog6ToothIcon, KeyIcon, EyeIcon, EyeSlashIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import NotificationBell from './NotificationBell'
+import toast from 'react-hot-toast'
 
 const navItems = [
   { to: '/', label: 'Projetos', icon: FolderIcon, roles: ['operacional', 'comercial', 'administrador', 'super_admin'] },
@@ -83,6 +84,10 @@ export default function Layout({ children }) {
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebar_collapsed') === '1' } catch { return false }
   })
+  const [senhaModal, setSenhaModal] = useState(false)
+  const [senhaForm, setSenhaForm] = useState({ nova: '', confirma: '' })
+  const [senhaShow, setSenhaShow] = useState({ nova: false, confirma: false })
+  const [senhaLoading, setSenhaLoading] = useState(false)
 
   function toggleCollapsed() {
     setCollapsed((v) => {
@@ -95,6 +100,18 @@ export default function Layout({ children }) {
   async function handleSignOut() {
     await signOut()
     navigate('/login')
+  }
+
+  async function handleAlterarSenha() {
+    if (senhaForm.nova.length < 6) { toast.error('A senha deve ter no mínimo 6 caracteres'); return }
+    if (senhaForm.nova !== senhaForm.confirma) { toast.error('As senhas não coincidem'); return }
+    setSenhaLoading(true)
+    const { error } = await supabase.auth.updateUser({ password: senhaForm.nova })
+    setSenhaLoading(false)
+    if (error) { toast.error('Erro ao alterar senha: ' + error.message); return }
+    toast.success('Senha alterada com sucesso!')
+    setSenhaForm({ nova: '', confirma: '' })
+    setSenhaModal(false)
   }
 
   const allowed = navItems.filter((item) => item.roles.includes(profile?.perfil))
@@ -184,10 +201,19 @@ export default function Layout({ children }) {
         <div className={`border-t border-gray-200 dark:border-gray-700/60 py-3 flex-shrink-0 ${isExpanded ? 'px-3' : 'px-2'}`}>
           {isExpanded ? (
             <>
-              <div className="px-3 py-2.5 mb-1 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <p className="text-[15px] font-semibold text-gray-800 dark:text-gray-200 truncate">{profile?.nome}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">{profile?.perfil?.replace('_', ' ')}</p>
-              </div>
+              <button
+                onClick={() => setSenhaModal(true)}
+                className="w-full text-left px-3 py-2.5 mb-1 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+                title="Clique para alterar sua senha"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold text-gray-800 dark:text-gray-200 truncate">{profile?.nome}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">{profile?.perfil?.replace('_', ' ')}</p>
+                  </div>
+                  <KeyIcon className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 dark:group-hover:text-blue-400 flex-shrink-0 ml-2 transition-colors" />
+                </div>
+              </button>
               <button
                 onClick={handleSignOut}
                 className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[15px] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-red-600 dark:hover:text-red-400 transition-colors"
@@ -198,14 +224,15 @@ export default function Layout({ children }) {
             </>
           ) : (
             <div className="flex flex-col items-center gap-1">
-              <div
-                title={profile?.nome}
-                className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center cursor-default"
+              <button
+                onClick={() => setSenhaModal(true)}
+                title={`${profile?.nome} — alterar senha`}
+                className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center hover:ring-2 hover:ring-blue-400 transition-all"
               >
                 <span className="text-xs font-bold text-blue-700 dark:text-blue-400">
                   {(profile?.nome ?? 'U')[0]}
                 </span>
-              </div>
+              </button>
               <button
                 onClick={handleSignOut}
                 title="Sair"
@@ -313,6 +340,76 @@ export default function Layout({ children }) {
           </footer>
         </main>
       </div>
+
+      {/* Modal alteração de senha */}
+      {senhaModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <KeyIcon className="w-5 h-5 text-blue-500" />
+                <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Alterar senha</h2>
+              </div>
+              <button onClick={() => { setSenhaModal(false); setSenhaForm({ nova: '', confirma: '' }) }}>
+                <XMarkIcon className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">
+              Logado como <strong className="text-gray-700 dark:text-gray-300">{profile?.nome}</strong>
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nova senha</label>
+                <div className="relative">
+                  <input
+                    type={senhaShow.nova ? 'text' : 'password'}
+                    value={senhaForm.nova}
+                    onChange={(e) => setSenhaForm((f) => ({ ...f, nova: e.target.value }))}
+                    placeholder="Mínimo 6 caracteres"
+                    className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button type="button" onClick={() => setSenhaShow((s) => ({ ...s, nova: !s.nova }))}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    {senhaShow.nova ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Confirmar nova senha</label>
+                <div className="relative">
+                  <input
+                    type={senhaShow.confirma ? 'text' : 'password'}
+                    value={senhaForm.confirma}
+                    onChange={(e) => setSenhaForm((f) => ({ ...f, confirma: e.target.value }))}
+                    placeholder="Repita a nova senha"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAlterarSenha()}
+                    className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button type="button" onClick={() => setSenhaShow((s) => ({ ...s, confirma: !s.confirma }))}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    {senhaShow.confirma ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setSenhaModal(false); setSenhaForm({ nova: '', confirma: '' }) }}
+                className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAlterarSenha}
+                disabled={senhaLoading}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition"
+              >
+                {senhaLoading ? 'Salvando...' : 'Alterar senha'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
