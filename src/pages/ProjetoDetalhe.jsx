@@ -217,7 +217,7 @@ export default function ProjetoDetalhe() {
     try { return localStorage.getItem('financeiro_aberto') !== 'false' } catch { return true }
   })
 
-  const canEdit = ['administrador', 'comercial', 'super_admin'].includes(profile?.perfil)
+  const canEdit = ['administrador', 'comercial', 'financeiro', 'super_admin'].includes(profile?.perfil)
   const canDelete = ['administrador', 'super_admin'].includes(profile?.perfil)
 
   async function fetchProject() {

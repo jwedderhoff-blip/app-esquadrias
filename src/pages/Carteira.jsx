@@ -50,7 +50,7 @@ export default function Carteira() {
   const [search, setSearch] = useState('')
   const [filterEtapa, setFilterEtapa] = useState('')
   const companyId = effectiveCompanyId()
-  const canCreate = ['comercial', 'administrador', 'super_admin'].includes(profile?.perfil)
+  const canCreate = ['comercial', 'financeiro', 'administrador', 'super_admin'].includes(profile?.perfil)
 
   useEffect(() => {
     async function load() {
