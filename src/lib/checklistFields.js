@@ -27,7 +27,7 @@ export const CHECKLIST_FIELDS = {
     { key: 'prazo', label: 'Prazo solicitado', type: 'date', required: true },
   ],
   'Responsável interno atribuído': [
-    { key: 'responsavel_id', label: 'Responsável', type: 'user_select', required: true },
+    { key: 'responsavel_nome', label: 'Responsável', type: 'text', required: true, placeholder: 'Nome do responsável pela produção' },
   ],
   'Valor contratual registrado': [
     { key: 'valor', label: 'Valor (R$)', type: 'currency', required: true },
