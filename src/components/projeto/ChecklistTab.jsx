@@ -8,6 +8,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   TrashIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid'
 import { supabase } from '../../lib/supabase'
@@ -159,7 +160,7 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
 
   function initCompras() {
     const d = item.dados || {}
-    if (d.compras) return d.compras
+    if (d.compras) return d.compras.filter((c) => c.fornecedor)
     if (d.fornecedor_aprovado) {
       return [{
         id: `migrated-${Date.now()}`,
@@ -180,7 +181,7 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const emptyForm = { fornecedor: '', valor: '', data_entrega: '', tipo_compra: '', percentual_compra: '', obs_compra: '' }
+  const emptyForm = { fornecedor: '', valor: '', data_entrega: '', tipo_compra: '', percentual_compra: '', obs_compra: '', referencia_orcamento: '' }
   const [form, setFormState] = useState(emptyForm)
 
   useEffect(() => {
@@ -232,6 +233,33 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
     setUploading(false)
   }
 
+  async function handleFileDelete(doc) {
+    if (!confirm(`Excluir "${doc.nome_arquivo}"?`)) return
+    const storagePath = doc.url_storage?.split('/storage/v1/object/public/documents/')?.[1]
+    if (storagePath) await supabase.storage.from('documents').remove([storagePath])
+    await supabase.from('documents').delete().eq('id', doc.id)
+    setDocs((prev) => prev.filter((d) => d.id !== doc.id))
+    toast.success('Documento excluído.')
+  }
+
+  async function handleFileReplace(doc, e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const storagePath = doc.url_storage?.split('/storage/v1/object/public/documents/')?.[1]
+    if (storagePath) await supabase.storage.from('documents').remove([storagePath])
+    const ext = file.name.split('.').pop()
+    const path = `${projectId}/${etapa}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: false })
+    if (error) { toast.error('Erro ao enviar: ' + error.message); setUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
+    await supabase.from('documents').update({ nome_arquivo: file.name, url_storage: publicUrl }).eq('id', doc.id)
+    setDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, nome_arquivo: file.name, url_storage: publicUrl } : d))
+    e.target.value = ''
+    setUploading(false)
+    toast.success('Documento substituído.')
+  }
+
   async function handleSave() {
     if (compras.length === 0) { toast.error('Registre ao menos uma compra.'); return }
     setSaving(true)
@@ -268,6 +296,9 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{compra.fornecedor}</p>
+                  {compra.referencia_orcamento && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5">{compra.referencia_orcamento}</p>
+                  )}
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                     {compra.valor && <span>R$ {parseFloat(compra.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
                     {compra.data_entrega && <span>Entrega: {new Date(compra.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}</span>}
@@ -301,6 +332,11 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               {editingId ? 'Editar compra' : 'Nova compra'}
             </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">A qual orçamento se refere?</label>
+              <input value={form.referencia_orcamento} onChange={(e) => setFormField('referencia_orcamento', e.target.value)}
+                placeholder="Ex.: Orçamento JoinVidros nº 905910, proposta Açometal..." className={base} />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fornecedor *</label>
               <input value={form.fornecedor} onChange={(e) => setFormField('fornecedor', e.target.value)}
@@ -370,13 +406,31 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
           <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Documentos de referência</p>
           {docs.length > 0 && (
             <div className="space-y-1.5 mb-3">
-              {docs.map((d) => (
-                <div key={d.id} className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <PaperClipIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                  <a href={d.url_storage} target="_blank" rel="noreferrer"
-                    className="text-xs text-gray-600 dark:text-gray-400 hover:underline flex-1 truncate">{d.nome_arquivo}</a>
-                </div>
-              ))}
+              {docs.map((d) => {
+                const replaceRef = { current: null }
+                return (
+                  <div key={d.id} className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg group">
+                    <PaperClipIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                    <a href={d.url_storage} target="_blank" rel="noreferrer"
+                      className="text-xs text-gray-600 dark:text-gray-400 hover:underline flex-1 truncate">{d.nome_arquivo}</a>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <button type="button" title="Substituir arquivo"
+                        onClick={() => replaceRef.current?.click()}
+                        className="text-gray-400 hover:text-blue-500 transition-colors">
+                        <ArrowPathIcon className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" title="Excluir arquivo"
+                        onClick={() => handleFileDelete(d)}
+                        className="text-gray-400 hover:text-red-500 transition-colors">
+                        <TrashIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <input ref={replaceRef} type="file" className="hidden"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileReplace(d, e)} />
+                  </div>
+                )
+              })}
             </div>
           )}
           <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
@@ -405,7 +459,7 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
 // ── Modal de recebimento de material (por compra) ─────────────
 function ModalRecebimento({ item, orcamentoItem, onClose, onDone }) {
   const { session } = useAuth()
-  const compras = orcamentoItem?.dados?.compras || []
+  const compras = (orcamentoItem?.dados?.compras || []).filter((c) => c.fornecedor)
   const [recebimentos, setRecebimentos] = useState(item.dados?.recebimentos || [])
   const [saving, setSaving] = useState(false)
 
@@ -1567,7 +1621,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
 
                 {/* Resumo de compras para Orçamentos realizados */}
                 {item.descricao === 'Orçamentos realizados' && (() => {
-                  const compras = item.dados?.compras || []
+                  const compras = (item.dados?.compras || []).filter((c) => c.fornecedor)
                   if (!compras.length) return null
                   return (
                     <div className="px-4 pb-3 ml-9">
@@ -1578,6 +1632,9 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                               <span className="font-medium">{compra.fornecedor}</span>
                               {compra.valor && <span className="text-gray-500">R$ {parseFloat(compra.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
                             </div>
+                            {compra.referencia_orcamento && (
+                              <div className="text-blue-500 dark:text-blue-400 truncate">{compra.referencia_orcamento}</div>
+                            )}
                             {compra.data_entrega && (
                               <div className="text-gray-400 dark:text-gray-500">
                                 Entrega: {new Date(compra.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}
@@ -1594,7 +1651,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                 {/* Status por compra para Material recebido e conferido */}
                 {item.descricao === 'Material recebido e conferido' && (() => {
                   const orcamentoItem = items.find((i) => i.descricao === 'Orçamentos realizados')
-                  const compras = orcamentoItem?.dados?.compras || []
+                  const compras = (orcamentoItem?.dados?.compras || []).filter((c) => c.fornecedor)
                   const recebimentos = item.dados?.recebimentos || []
                   if (!compras.length) return null
                   return (
