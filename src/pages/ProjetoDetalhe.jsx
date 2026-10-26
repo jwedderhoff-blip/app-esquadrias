@@ -288,6 +288,24 @@ export default function ProjetoDetalhe() {
     setPagamentos(data || [])
   }
 
+  async function syncValorContrato(projectData) {
+    if (projectData?.valor_contrato != null) return
+    const { data } = await supabase
+      .from('checklist_items')
+      .select('dados')
+      .eq('project_id', id)
+      .eq('etapa', 'contrato')
+      .eq('descricao', 'Valor contratual registrado')
+      .eq('concluido', true)
+      .maybeSingle()
+    const raw = data?.dados?.valor
+    if (!raw) return
+    const valor = parseFloat(String(raw).replace(',', '.'))
+    if (isNaN(valor) || valor <= 0) return
+    await supabase.from('projects').update({ valor_contrato: valor }).eq('id', id)
+    setProject((p) => ({ ...p, valor_contrato: valor }))
+  }
+
   async function salvarValorContrato() {
     const valor = parseFloat(valorInput.replace(',', '.'))
     if (isNaN(valor) || valor < 0) { toast.error('Valor inválido'); return }
@@ -333,7 +351,7 @@ export default function ProjetoDetalhe() {
 
   useEffect(() => {
     fetchProject().then((p) => {
-      if (p) loadStageChecklist(p.etapa_atual)
+      if (p) { loadStageChecklist(p.etapa_atual); syncValorContrato(p) }
       setLoading(false)
     })
     loadAllStageStats()
@@ -641,8 +659,8 @@ export default function ProjetoDetalhe() {
         </div>
       </div>
 
-      {/* Card financeiro */}
-      {(() => {
+      {/* Card financeiro — só aparece após valor do contrato ser definido */}
+      {project.valor_contrato != null && (() => {
         const totalRecebido = pagamentos.reduce((s, p) => s + Number(p.valor), 0)
         const saldo = (project.valor_contrato ?? 0) - totalRecebido
         const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -732,8 +750,8 @@ export default function ProjetoDetalhe() {
               </div>
             )}
 
-            {pagamentos.length === 0 && project.valor_contrato == null && (
-              <p className="text-xs text-gray-400 dark:text-gray-500">Nenhuma informação financeira registrada.</p>
+            {pagamentos.length === 0 && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Nenhum pagamento registrado ainda.</p>
             )}
           </div>
         )
