@@ -43,7 +43,7 @@ export default function RelatorioFinanceiro() {
     const [{ data: projects }, { data: pagamentos }] = await Promise.all([
       supabase
         .from('projects')
-        .select('id, titulo, cliente, etapa_atual, valor_contrato')
+        .select('id, titulo, cliente, etapa_atual, valor_contrato, numero_pedido, numero_orcamento')
         .eq('company_id', companyId)
         .neq('etapa_atual', 'encerrado')
         .order('titulo'),
@@ -166,36 +166,50 @@ export default function RelatorioFinanceiro() {
         return (
           <div key={project.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
             {/* Cabeçalho do projeto */}
-            <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/60 flex items-center justify-between gap-4 flex-wrap">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{project.titulo}</span>
-                  <Link to={`/projetos/${project.id}`} target="_blank"
-                    className="text-gray-400 hover:text-blue-500 transition-colors print:hidden">
-                    <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-                <p className="text-xs text-gray-400 mt-0.5">{project.cliente}</p>
+            <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+              {/* Linha 1: nº pedido + link */}
+              <div className="flex items-center gap-2 mb-1">
+                {(project.numero_pedido || project.numero_orcamento) && (
+                  <span className="text-[11px] font-semibold text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
+                    {project.numero_pedido ? `Pedido #${project.numero_pedido}` : `Orç. #${project.numero_orcamento}`}
+                  </span>
+                )}
+                <Link to={`/projetos/${project.id}`} target="_blank"
+                  className="text-gray-400 hover:text-blue-500 transition-colors print:hidden ml-auto">
+                  <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                </Link>
               </div>
-              <div className="flex items-center gap-4 flex-wrap text-right">
+              {/* Linha 2: título + cliente */}
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-gray-900 dark:text-gray-100 leading-tight">{project.titulo}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{project.cliente}</p>
+                </div>
+                {/* Valor em evidência */}
                 {project.valor_contrato != null && (
-                  <div>
-                    <p className="text-[11px] text-gray-400">Contrato</p>
-                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{fmtBRL(Number(project.valor_contrato))}</p>
+                  <div className="flex-shrink-0 text-right">
+                    <p className="text-[11px] text-gray-400 uppercase tracking-wide">Valor do contrato</p>
+                    <p className="text-xl font-extrabold text-gray-900 dark:text-gray-100 leading-tight">{fmtBRL(Number(project.valor_contrato))}</p>
                   </div>
                 )}
+              </div>
+              {/* Linha 3: recebido / saldo */}
+              <div className="flex items-center gap-6 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
                 <div>
                   <p className="text-[11px] text-gray-400">Recebido</p>
-                  <p className="text-xs font-bold text-green-600 dark:text-green-400">{fmtBRL(totalProjeto)}</p>
+                  <p className="text-sm font-bold text-green-600 dark:text-green-400">{fmtBRL(totalProjeto)}</p>
                 </div>
                 {saldo != null && (
                   <div>
-                    <p className="text-[11px] text-gray-400">Saldo</p>
-                    <p className={`text-xs font-bold ${saldo > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
-                      {fmtBRL(Math.max(0, saldo))}
+                    <p className="text-[11px] text-gray-400">Saldo pendente</p>
+                    <p className={`text-sm font-bold ${saldo > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {saldo > 0 ? fmtBRL(saldo) : 'Quitado'}
                     </p>
                   </div>
                 )}
+                <div className="ml-auto">
+                  <p className="text-[11px] text-gray-400">{pagamentos.length} lançamento{pagamentos.length !== 1 ? 's' : ''}</p>
+                </div>
               </div>
             </div>
 
