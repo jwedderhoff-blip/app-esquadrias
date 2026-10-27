@@ -82,7 +82,14 @@ export default function RelatorioFinanceiro() {
     return { project, pagamentos: pags }
   }).filter(({ pagamentos }) => pagamentos.length > 0)
 
-  const totalGeral = rowsFiltrados.reduce((s, { pagamentos }) => s + pagamentos.reduce((ss, p) => ss + Number(p.valor), 0), 0)
+  const totalRecebido = rowsFiltrados.reduce((s, { pagamentos }) => s + pagamentos.reduce((ss, p) => ss + Number(p.valor), 0), 0)
+  // Soma dos contratos apenas dos projetos que aparecem no relatório filtrado
+  const totalContratos = rowsFiltrados.reduce((s, { project }) => s + (project.valor_contrato != null ? Number(project.valor_contrato) : 0), 0)
+  const totalFaltante = Math.max(0, totalContratos - totalRecebido)
+  const pctRecebido = totalContratos > 0 ? Math.round((totalRecebido / totalContratos) * 100) : 0
+  const pctFaltante = totalContratos > 0 ? Math.round((totalFaltante / totalContratos) * 100) : 0
+  // alias para compatibilidade com resumo por forma abaixo
+  const totalGeral = totalRecebido
   const totalPorForma = {}
   for (const { pagamentos } of rowsFiltrados) {
     for (const p of pagamentos) {
@@ -102,6 +109,41 @@ export default function RelatorioFinanceiro() {
           Imprimir / PDF
         </button>
       </div>
+
+      {/* Cards de totais */}
+      {!loading && rowsFiltrados.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 px-5 py-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Valor total dos contratos</p>
+            <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100">{fmtBRL(totalContratos)}</p>
+            <p className="text-[11px] text-gray-400 mt-1">{rowsFiltrados.length} projeto{rowsFiltrados.length !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl border border-green-100 dark:border-green-800/30 px-5 py-4">
+            <p className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide mb-1">Valor recebido</p>
+            <p className="text-2xl font-extrabold text-green-700 dark:text-green-300">{fmtBRL(totalRecebido)}</p>
+            <div className="mt-2">
+              <div className="h-1.5 bg-green-200 dark:bg-green-800 rounded-full overflow-hidden">
+                <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pctRecebido}%` }} />
+              </div>
+              <p className="text-[11px] text-green-600 dark:text-green-400 mt-1">{pctRecebido}% do total</p>
+            </div>
+          </div>
+          <div className={`rounded-2xl border px-5 py-4 ${totalFaltante > 0 ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/30' : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700'}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${totalFaltante > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'}`}>Valor faltante</p>
+            <p className={`text-2xl font-extrabold ${totalFaltante > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-400 dark:text-gray-500'}`}>
+              {totalFaltante > 0 ? fmtBRL(totalFaltante) : 'Quitado'}
+            </p>
+            {totalFaltante > 0 && (
+              <div className="mt-2">
+                <div className="h-1.5 bg-amber-200 dark:bg-amber-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${pctFaltante}%` }} />
+                </div>
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">{pctFaltante}% pendente</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 print:hidden">
