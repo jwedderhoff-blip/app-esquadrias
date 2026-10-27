@@ -24,7 +24,8 @@ function fmtData(d) {
 }
 
 export default function RelatorioFinanceiro() {
-  const { companyId } = useAuth()
+  const { effectiveCompanyId } = useAuth()
+  const companyId = effectiveCompanyId()
   const [rows, setRows] = useState([])   // { project, pagamentos[] }
   const [loading, setLoading] = useState(true)
   const [filtroForma, setFiltroForma] = useState('')
