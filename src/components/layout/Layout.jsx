@@ -5,6 +5,7 @@ import {
   ArrowRightOnRectangleIcon, ChartBarIcon, BuildingOffice2Icon,
   ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon,
   HomeIcon, Cog6ToothIcon, KeyIcon, EyeIcon, EyeSlashIcon,
+  BanknotesIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -13,6 +14,7 @@ import toast from 'react-hot-toast'
 
 const navItems = [
   { to: '/', label: 'Projetos', icon: FolderIcon, roles: ['operacional', 'comercial', 'financeiro', 'administrador', 'super_admin'] },
+  { to: '/relatorio-financeiro', label: 'Relatório Financeiro', icon: BanknotesIcon, roles: ['financeiro', 'administrador', 'super_admin'] },
   { to: '/usuarios', label: 'Usuários', icon: UsersIcon, roles: ['administrador', 'super_admin'] },
   { to: '/log', label: 'Log de Atividades', icon: ChartBarIcon, roles: ['administrador', 'super_admin'] },
   { to: '/admin', label: 'Empresas', icon: BuildingOffice2Icon, roles: ['super_admin'] },
