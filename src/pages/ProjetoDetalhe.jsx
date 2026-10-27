@@ -697,8 +697,8 @@ export default function ProjetoDetalhe() {
         </div>
       </div>
 
-      {/* Card financeiro — só aparece após valor do contrato ser definido */}
-      {project.valor_contrato != null && (() => {
+      {/* Card financeiro */}
+      {(() => {
         const totalRecebido = pagamentos.reduce((s, p) => s + Number(p.valor), 0)
         const saldo = (project.valor_contrato ?? 0) - totalRecebido
         const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
