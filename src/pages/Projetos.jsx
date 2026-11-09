@@ -136,8 +136,8 @@ export default function Projetos() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Projeto</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Nº</th>
+                <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Projeto</th>
                 <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Cliente</th>
                 <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Etapa</th>
                 <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">Checklist</th>
@@ -154,6 +154,14 @@ export default function Projetos() {
                     onClick={() => navigate(`/projetos/${p.id}`)}
                     className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                   >
+                    {/* Nº pedido — coluna dedicada em sm+ */}
+                    <td className="px-4 py-3.5 hidden sm:table-cell">
+                      {p.numero_pedido
+                        ? <span className="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded">{p.numero_pedido}</span>
+                        : <span className="text-gray-300 dark:text-gray-600">—</span>
+                      }
+                    </td>
+
                     {/* Projeto */}
                     <td className="px-5 py-3.5">
                       <span className={`font-medium transition-colors ${p.titulo ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 italic'}`}>
@@ -164,14 +172,6 @@ export default function Projetos() {
                         <span className="ml-2 text-xs font-mono text-blue-500 sm:hidden">{p.numero_pedido}</span>
                       )}
                       <p className="text-xs text-gray-400 dark:text-gray-500 md:hidden mt-0.5">{p.cliente}</p>
-                    </td>
-
-                    {/* Nº pedido — coluna dedicada em sm+ */}
-                    <td className="px-4 py-3.5 hidden sm:table-cell">
-                      {p.numero_pedido
-                        ? <span className="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded">{p.numero_pedido}</span>
-                        : <span className="text-gray-300 dark:text-gray-600">—</span>
-                      }
                     </td>
 
                     {/* Cliente */}
