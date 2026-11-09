@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PlusIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 
 export default function Projetos() {
+  const navigate = useNavigate()
   const { effectiveCompanyId } = useAuth()
   const [projects, setProjects] = useState([])
   const [checklistStats, setChecklistStats] = useState({})
@@ -72,8 +73,8 @@ export default function Projetos() {
   const filtered = projects.filter((p) => {
     const q = search.toLowerCase()
     const matchSearch = !search ||
-      p.titulo.toLowerCase().includes(q) ||
-      p.cliente.toLowerCase().includes(q) ||
+      (p.titulo ?? '').toLowerCase().includes(q) ||
+      (p.cliente ?? '').toLowerCase().includes(q) ||
       (p.numero_pedido ?? '').toLowerCase().includes(q)
     const matchEtapa = !filterEtapa || p.etapa_atual === filterEtapa
     return matchSearch && matchEtapa
@@ -148,15 +149,16 @@ export default function Projetos() {
               {filtered.map((p) => {
                 const ck = getChecklist(p.id, p.etapa_atual)
                 return (
-                  <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <tr
+                    key={p.id}
+                    onClick={() => navigate(`/projetos/${p.id}`)}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  >
                     {/* Projeto */}
                     <td className="px-5 py-3.5">
-                      <Link
-                        to={`/projetos/${p.id}`}
-                        className="font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                      >
-                        {p.titulo}
-                      </Link>
+                      <span className={`font-medium transition-colors ${p.titulo ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 italic'}`}>
+                        {p.titulo || 'Sem título'}
+                      </span>
                       {/* número visível só em mobile (inline) */}
                       {p.numero_pedido && (
                         <span className="ml-2 text-xs font-mono text-blue-500 sm:hidden">{p.numero_pedido}</span>

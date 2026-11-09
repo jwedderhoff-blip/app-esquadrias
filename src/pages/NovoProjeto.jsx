@@ -18,6 +18,7 @@ export default function NovoProjeto() {
   const [responsavel, setResponsavel] = useState('')
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(false)
+  const [tituloErro, setTituloErro] = useState('')
 
   useEffect(() => {
     supabase.from('users').select('id, nome').eq('ativo', true).then(({ data }) => {
@@ -30,6 +31,11 @@ export default function NovoProjeto() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!titulo.trim()) {
+      setTituloErro('O título é obrigatório')
+      return
+    }
+    setTituloErro('')
     const companyId = effectiveCompanyId()
     if (!companyId) {
       toast.error('Selecione uma empresa antes de criar o projeto.')
@@ -204,11 +210,12 @@ export default function NovoProjeto() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Título do projeto *</label>
               <input
                 value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
+                onChange={(e) => { setTitulo(e.target.value); if (e.target.value.trim()) setTituloErro('') }}
                 required
                 placeholder="Ex: Esquadrias residência Silva"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full px-3.5 py-2.5 rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${tituloErro ? 'border-red-400 dark:border-red-500 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'}`}
               />
+              {tituloErro && <p className="mt-1 text-xs text-red-500">{tituloErro}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Responsável *</label>
