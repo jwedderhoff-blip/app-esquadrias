@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { PlusIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -11,7 +11,6 @@ import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 
 export default function Projetos() {
-  const navigate = useNavigate()
   const { effectiveCompanyId } = useAuth()
   const [projects, setProjects] = useState([])
   const [checklistStats, setChecklistStats] = useState({})
@@ -70,15 +69,21 @@ export default function Projetos() {
     }
   }
 
-  const filtered = projects.filter((p) => {
-    const q = search.toLowerCase()
-    const matchSearch = !search ||
-      (p.titulo ?? '').toLowerCase().includes(q) ||
-      (p.cliente ?? '').toLowerCase().includes(q) ||
-      (p.numero_pedido ?? '').toLowerCase().includes(q)
-    const matchEtapa = !filterEtapa || p.etapa_atual === filterEtapa
-    return matchSearch && matchEtapa
-  })
+  const filtered = projects
+    .filter((p) => {
+      const q = search.toLowerCase()
+      const matchSearch = !search ||
+        (p.titulo ?? '').toLowerCase().includes(q) ||
+        (p.cliente ?? '').toLowerCase().includes(q) ||
+        (p.numero_pedido ?? '').toLowerCase().includes(q)
+      const matchEtapa = !filterEtapa || p.etapa_atual === filterEtapa
+      return matchSearch && matchEtapa
+    })
+    .sort((a, b) => {
+      const na = parseInt(a.numero_orcamento) || 0
+      const nb = parseInt(b.numero_orcamento) || 0
+      return nb - na
+    })
 
   return (
     <div>
@@ -151,11 +156,15 @@ export default function Projetos() {
                 return (
                   <tr
                     key={p.id}
-                    onClick={() => navigate(`/projetos/${p.id}`)}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                    className="relative hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     {/* Nº pedido — coluna dedicada em sm+ */}
                     <td className="px-4 py-3.5">
+                      <Link
+                        to={`/projetos/${p.id}`}
+                        className="absolute inset-0 z-10"
+                        aria-label={`Abrir projeto ${p.titulo || 'Sem título'}`}
+                      />
                       {p.numero_pedido
                         ? <span className="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded">{p.numero_pedido}</span>
                         : <span className="text-gray-300 dark:text-gray-600">—</span>
