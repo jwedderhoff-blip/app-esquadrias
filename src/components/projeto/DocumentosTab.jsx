@@ -104,7 +104,7 @@ export default function DocumentosTab({ projectId, etapa, project }) {
     const { data: notifyUsers } = await supabase
       .from('users')
       .select('id')
-      .in('perfil', ['comercial', 'administrador'])
+      .in('perfil', ['comercial', 'financeiro', 'administrador'])
       .neq('id', session.user.id)
 
     if (notifyUsers?.length) {

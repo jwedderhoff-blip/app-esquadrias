@@ -27,7 +27,7 @@ export const CHECKLIST_FIELDS = {
     { key: 'prazo', label: 'Prazo solicitado', type: 'date', required: true },
   ],
   'Responsável interno atribuído': [
-    { key: 'responsavel_id', label: 'Responsável', type: 'user_select', required: true },
+    { key: 'responsavel_nome', label: 'Responsável', type: 'text', required: true, placeholder: 'Nome do responsável pela produção' },
   ],
   'Valor contratual registrado': [
     { key: 'valor', label: 'Valor (R$)', type: 'currency', required: true },
@@ -64,13 +64,6 @@ export const CHECKLIST_FIELDS = {
     { key: 'data_entrega_agendada', label: 'Data agendada para entrega', type: 'date', required: false },
     { key: 'cliente_agendado', label: 'Cliente agendado (confirmado)', type: 'boolean', required: false },
     { key: 'nota_emitida', label: 'Nota fiscal emitida', type: 'boolean', required: false },
-  ],
-  'Orçamentos realizados': [
-    { key: 'fornecedor_aprovado', label: 'Fornecedor aprovado', type: 'text', required: true },
-    { key: 'valor_aprovado', label: 'Valor aprovado (R$)', type: 'currency', required: true },
-    { key: 'data_entrega', label: 'Data de entrega prevista', type: 'date', required: true, alertar_atraso: true },
-    { key: 'tipo_compra', label: 'Tipo de compra', type: 'select', required: true, options: ['Totalidade do material', 'Compra parcial'] },
-    { key: 'obs_compra', label: 'Itens desta compra parcial', type: 'textarea', required: false },
   ],
   'Prazo de entrega do material confirmado': [
     { key: 'prazo_entrega', label: 'Prazo de entrega do material', type: 'date', required: true, alertar_atraso: true },

@@ -13,6 +13,7 @@ import Usuarios from './pages/Usuarios'
 import Admin from './pages/Admin'
 import DashboardPublico from './pages/DashboardPublico'
 import Configuracoes from './pages/Configuracoes'
+import RelatorioFinanceiro from './pages/RelatorioFinanceiro'
 import { ThemeProvider } from './context/ThemeContext'
 
 function AppRoutes() {
@@ -76,6 +77,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout><Configuracoes /></Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/relatorio-financeiro"
+        element={
+          <ProtectedRoute requiredPerfil={['financeiro', 'administrador', 'super_admin']}>
+            <Layout><RelatorioFinanceiro /></Layout>
           </ProtectedRoute>
         }
       />

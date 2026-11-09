@@ -46,8 +46,10 @@ serve(async (req) => {
 
     let checklistStats: { project_id: string; concluido: boolean }[] = []
     let prazosData: { project_id: string; dados: Record<string, string> | null }[] = []
+    let activityData: { project_id: string; criado_em: string; acao: string; detalhe: string | null; users: { nome: string } | null }[] = []
+    let compraIniciadaIds: Set<string> = new Set()
     if (projectIds.length) {
-      const [statsRes, prazosRes] = await Promise.all([
+      const [statsRes, prazosRes, activityRes, compraRes] = await Promise.all([
         supabase
           .from('checklist_items')
           .select('project_id, concluido')
@@ -58,9 +60,22 @@ serve(async (req) => {
           .in('project_id', projectIds)
           .eq('descricao', 'Prazo solicitado pelo cliente')
           .eq('etapa', 'pedido'),
+        supabase
+          .from('activity_log')
+          .select('project_id, criado_em, acao, detalhe, users!usuario_id(nome)')
+          .in('project_id', projectIds)
+          .order('criado_em', { ascending: false }),
+        supabase
+          .from('checklist_items')
+          .select('project_id')
+          .in('project_id', projectIds)
+          .eq('descricao', 'Orçamentos realizados')
+          .eq('concluido', true),
       ])
       checklistStats = statsRes.data || []
       prazosData = prazosRes.data || []
+      activityData = (activityRes.data || []) as typeof activityData
+      compraIniciadaIds = new Set((compraRes.data || []).map((r: { project_id: string }) => r.project_id))
     }
 
     const statsByProject: Record<string, { total: number; done: number }> = {}
@@ -75,12 +90,31 @@ serve(async (req) => {
       prazoByProject[item.project_id] = item.dados?.prazo ?? null
     }
 
+    // Última alteração por projeto (primeiro registro = mais recente, pois ordenado DESC)
+    const lastActivityByProject: Record<string, { nome: string; em: string; acao: string; detalhe: string | null }> = {}
+    for (const item of activityData) {
+      if (!lastActivityByProject[item.project_id]) {
+        lastActivityByProject[item.project_id] = {
+          nome: item.users?.nome ?? 'Usuário',
+          em: item.criado_em,
+          acao: item.acao,
+          detalhe: item.detalhe ?? null,
+        }
+      }
+    }
+
     const projectsWithStats = (projects || []).map((p) => ({
       ...p,
       checklist_total: statsByProject[p.id]?.total ?? 0,
       checklist_done: statsByProject[p.id]?.done ?? 0,
       prazo_pedido: prazoByProject[p.id] ?? null,
-    }))
+      ultima_alteracao: lastActivityByProject[p.id] ?? null,
+      compra_material_iniciada: compraIniciadaIds.has(p.id),
+    })).sort((a, b) => {
+      const aDate = a.ultima_alteracao?.em ?? a.atualizado_em ?? a.criado_em
+      const bDate = b.ultima_alteracao?.em ?? b.atualizado_em ?? b.criado_em
+      return new Date(bDate).getTime() - new Date(aDate).getTime()
+    })
 
     return new Response(
       JSON.stringify({ company, projects: projectsWithStats, generated_at: new Date().toISOString() }),

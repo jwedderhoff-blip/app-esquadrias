@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, PencilSquareIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, EllipsisVerticalIcon, PencilSquareIcon, TrashIcon, XMarkIcon, PlusIcon, BanknotesIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ETAPAS, ETAPA_INDEX } from '../lib/constants'
@@ -21,7 +21,6 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
     cliente_fone: project.cliente_fone ?? '',
     cliente_email: project.cliente_email ?? '',
     criado_por: project.criado_por ?? '',
-    drive_pasta_url: project.drive_pasta_url ?? '',
   })
   const [confirmando, setConfirmando] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -34,7 +33,7 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
       titulo: 'Título', cliente: 'Cliente',
       cliente_cpf_cnpj: 'CPF/CNPJ',
       cliente_fone: 'Telefone', cliente_email: 'Email cliente',
-      criado_por: 'Responsável', drive_pasta_url: 'Pasta Drive',
+      criado_por: 'Responsável',
     }
     return Object.entries(form)
       .filter(([k, v]) => String(v ?? '') !== String(project[k] ?? ''))
@@ -113,13 +112,6 @@ function ModalEditarProjeto({ project, usuarios, onClose, onSaved, session }) {
                 <input type="email" value={form.cliente_email} onChange={set('cliente_email')}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Pasta no Google Drive (URL)</label>
-              <input type="url" value={form.drive_pasta_url} onChange={set('drive_pasta_url')}
-                placeholder="https://drive.google.com/drive/folders/..."
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Pasta específica deste projeto no Drive da empresa.</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Responsável</label>
@@ -212,10 +204,23 @@ export default function ProjetoDetalhe() {
   const [tab, setTab] = useState('etapas')
   const [editModal, setEditModal] = useState(false)
   const [deleteModal, setDeleteModal] = useState(false)
+  const [actionMenu, setActionMenu] = useState(false)
   const [advanceModal, setAdvanceModal] = useState(false)
   const [stageStats, setStageStats] = useState({})
+  const [pagamentos, setPagamentos] = useState([])
+  const [editandoValor, setEditandoValor] = useState(false)
+  const [valorInput, setValorInput] = useState('')
+  const [modalPagamento, setModalPagamento] = useState(false)
+  const [formPagamento, setFormPagamento] = useState({ descricao: '', valor: '', data_pagamento: '', forma_recebimento: '', destino: '' })
+  const [savingPagamento, setSavingPagamento] = useState(false)
+  const [editandoPagamento, setEditandoPagamento] = useState(null)
+  const [formEditPagamento, setFormEditPagamento] = useState({ descricao: '', valor: '', data_pagamento: '', forma_recebimento: '', destino: '' })
+  const [savingEditPagamento, setSavingEditPagamento] = useState(false)
+  const [financeiroAberto, setFinanceiroAberto] = useState(() => {
+    try { return localStorage.getItem('financeiro_aberto') !== 'false' } catch { return true }
+  })
 
-  const canEdit = ['administrador', 'comercial', 'super_admin'].includes(profile?.perfil)
+  const canEdit = ['administrador', 'comercial', 'financeiro', 'super_admin'].includes(profile?.perfil)
   const canDelete = ['administrador', 'super_admin'].includes(profile?.perfil)
 
   async function fetchProject() {
@@ -235,7 +240,7 @@ export default function ProjetoDetalhe() {
       .select('*')
       .eq('project_id', id)
       .eq('etapa', etapa)
-      .order('id')
+      .order('ordem')
 
     if (existing?.length) {
       setChecklistItems(existing)
@@ -257,9 +262,10 @@ export default function ProjetoDetalhe() {
           etapa,
           descricao: t.descricao,
           requer_documento: t.requer_documento ?? false,
+          ordem: t.ordem,
         })))
         .select()
-      setChecklistItems(inserted || [])
+      setChecklistItems((inserted || []).sort((a, b) => a.ordem - b.ordem))
     } else {
       setChecklistItems([])
     }
@@ -279,6 +285,96 @@ export default function ProjetoDetalhe() {
     setStageStats(stats)
   }
 
+  async function fetchPagamentos() {
+    const { data } = await supabase
+      .from('pagamentos')
+      .select('*')
+      .eq('project_id', id)
+      .order('data_pagamento', { ascending: true, nullsFirst: false })
+    setPagamentos(data || [])
+  }
+
+  async function syncValorContrato(projectData) {
+    if (projectData?.valor_contrato != null) return
+    const { data } = await supabase
+      .from('checklist_items')
+      .select('dados')
+      .eq('project_id', id)
+      .eq('etapa', 'contrato')
+      .eq('descricao', 'Valor contratual registrado')
+      .eq('concluido', true)
+      .maybeSingle()
+    const raw = data?.dados?.valor
+    if (!raw) return
+    const valor = parseFloat(String(raw).replace(',', '.'))
+    if (isNaN(valor) || valor <= 0) return
+    await supabase.from('projects').update({ valor_contrato: valor }).eq('id', id)
+    setProject((p) => ({ ...p, valor_contrato: valor }))
+  }
+
+  async function salvarValorContrato() {
+    const valor = parseFloat(valorInput.replace(',', '.'))
+    if (isNaN(valor) || valor < 0) { toast.error('Valor inválido'); return }
+    const { error } = await supabase.from('projects').update({ valor_contrato: valor }).eq('id', id)
+    if (error) { toast.error('Erro ao salvar'); return }
+    setProject((p) => ({ ...p, valor_contrato: valor }))
+    setEditandoValor(false)
+    toast.success('Valor do contrato atualizado')
+  }
+
+  async function adicionarPagamento() {
+    const valor = parseFloat(formPagamento.valor.replace(',', '.'))
+    if (isNaN(valor) || valor <= 0) { toast.error('Valor inválido'); return }
+    if (!formPagamento.descricao.trim()) { toast.error('Informe uma descrição'); return }
+    setSavingPagamento(true)
+    const { error } = await supabase.from('pagamentos').insert({
+      project_id: id,
+      company_id: project.company_id,
+      descricao: formPagamento.descricao.trim(),
+      valor,
+      data_pagamento: formPagamento.data_pagamento || null,
+      forma_recebimento: formPagamento.forma_recebimento || null,
+      destino: formPagamento.destino.trim() || null,
+      criado_por: session.user.id,
+    })
+    setSavingPagamento(false)
+    if (error) { toast.error('Erro: ' + error.message); return }
+    setFormPagamento({ descricao: '', valor: '', data_pagamento: '', forma_recebimento: '', destino: '' })
+    setModalPagamento(false)
+    fetchPagamentos()
+    toast.success('Pagamento registrado')
+  }
+
+  function abrirEditarPagamento(pag) {
+    setFormEditPagamento({
+      descricao: pag.descricao || '',
+      valor: String(pag.valor).replace('.', ','),
+      data_pagamento: pag.data_pagamento || '',
+      forma_recebimento: pag.forma_recebimento || '',
+      destino: pag.destino || '',
+    })
+    setEditandoPagamento(pag)
+  }
+
+  async function salvarEditPagamento() {
+    const valor = parseFloat(formEditPagamento.valor.replace(',', '.'))
+    if (isNaN(valor) || valor <= 0) { toast.error('Valor inválido'); return }
+    if (!formEditPagamento.descricao.trim()) { toast.error('Informe uma descrição'); return }
+    setSavingEditPagamento(true)
+    const { error } = await supabase.from('pagamentos').update({
+      descricao: formEditPagamento.descricao.trim(),
+      valor,
+      data_pagamento: formEditPagamento.data_pagamento || null,
+      forma_recebimento: formEditPagamento.forma_recebimento || null,
+      destino: formEditPagamento.destino.trim() || null,
+    }).eq('id', editandoPagamento.id)
+    setSavingEditPagamento(false)
+    if (error) { toast.error('Erro: ' + error.message); return }
+    setEditandoPagamento(null)
+    fetchPagamentos()
+    toast.success('Pagamento atualizado')
+  }
+
   async function fetchChecklist() {
     const etapa = selectedEtapa ?? project?.etapa_atual
     if (!etapa) return
@@ -287,16 +383,17 @@ export default function ProjetoDetalhe() {
       .select('*')
       .eq('project_id', id)
       .eq('etapa', etapa)
-      .order('id')
+      .order('ordem')
     setChecklistItems(data || [])
   }
 
   useEffect(() => {
     fetchProject().then((p) => {
-      if (p) loadStageChecklist(p.etapa_atual)
+      if (p) { loadStageChecklist(p.etapa_atual); syncValorContrato(p) }
       setLoading(false)
     })
     loadAllStageStats()
+    fetchPagamentos()
     supabase.from('users').select('id, nome').eq('ativo', true).order('nome').then(({ data }) => setUsuarios(data || []))
   }, [id])
 
@@ -396,6 +493,7 @@ export default function ProjetoDetalhe() {
           etapa: nextEtapa,
           descricao: t.descricao,
           requer_documento: t.requer_documento ?? false,
+          ordem: t.ordem,
         }))
 
       if (toInsert.length) {
@@ -508,18 +606,42 @@ export default function ProjetoDetalhe() {
               )
             })()}
             <div className="flex items-center gap-2">
-              {canEdit && (
-                <button onClick={() => setEditModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                  <PencilSquareIcon className="w-4 h-4" />
-                  Editar
-                </button>
-              )}
-              {canDelete && (
-                <button onClick={() => setDeleteModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-red-200 dark:border-red-800 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-                  <TrashIcon className="w-4 h-4" />
-                </button>
+              {(canEdit || canDelete) && (
+                <div className="relative">
+                  <button
+                    onClick={() => setActionMenu((v) => !v)}
+                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                    title="Mais ações"
+                  >
+                    <EllipsisVerticalIcon className="w-5 h-5" />
+                  </button>
+                  {actionMenu && (
+                    <>
+                      {/* backdrop para fechar ao clicar fora */}
+                      <div className="fixed inset-0 z-10" onClick={() => setActionMenu(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 min-w-[140px]">
+                        {canEdit && (
+                          <button
+                            onClick={() => { setActionMenu(false); setEditModal(true) }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                          >
+                            <PencilSquareIcon className="w-4 h-4" />
+                            Editar
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => { setActionMenu(false); setDeleteModal(true) }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                            Excluir
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
               {!isLast && (
                 <button
@@ -574,6 +696,294 @@ export default function ProjetoDetalhe() {
           </p>
         </div>
       </div>
+
+      {/* Card financeiro */}
+      {(() => {
+        const totalRecebido = pagamentos.reduce((s, p) => s + Number(p.valor), 0)
+        const saldo = (project.valor_contrato ?? 0) - totalRecebido
+        const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        return (
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 mb-6">
+            {/* Cabeçalho colapsável */}
+            <button
+              type="button"
+              onClick={() => setFinanceiroAberto((v) => { const n = !v; try { localStorage.setItem('financeiro_aberto', String(n)) } catch {} return n })}
+              className="w-full flex items-center justify-between px-5 py-4 text-left"
+            >
+              <div className="flex items-center gap-2">
+                <BanknotesIcon className="w-4 h-4 text-green-500" />
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Financeiro</span>
+                {!financeiroAberto && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                    {fmtBRL(totalRecebido)} recebido
+                    {saldo > 0 ? ` · ${fmtBRL(saldo)} pendente` : ' · quitado'}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {canEdit && financeiroAberto && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setModalPagamento(true) }}
+                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <PlusIcon className="w-3.5 h-3.5" />
+                    Registrar pagamento
+                  </button>
+                )}
+                {financeiroAberto
+                  ? <ChevronUpIcon className="w-4 h-4 text-gray-400" />
+                  : <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+                }
+              </div>
+            </button>
+
+            {financeiroAberto && <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-800 pt-4">
+
+            {/* Valor do contrato */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs text-gray-500 dark:text-gray-400 w-32 flex-shrink-0">Valor do contrato</span>
+              {editandoValor ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={valorInput}
+                    onChange={(e) => setValorInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') salvarValorContrato(); if (e.key === 'Escape') setEditandoValor(false) }}
+                    placeholder="0,00"
+                    autoFocus
+                    className="w-32 px-2 py-1 text-sm border border-blue-400 rounded-lg dark:bg-gray-800 dark:text-gray-100 focus:outline-none"
+                  />
+                  <button onClick={salvarValorContrato} className="text-xs text-blue-600 font-medium hover:underline">Salvar</button>
+                  <button onClick={() => setEditandoValor(false)} className="text-xs text-gray-400 hover:underline">Cancelar</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {project.valor_contrato != null ? fmtBRL(Number(project.valor_contrato)) : <span className="text-gray-400 font-normal">Não informado</span>}
+                  </span>
+                  {canEdit && (
+                    <button onClick={() => { setValorInput(project.valor_contrato != null ? String(project.valor_contrato).replace('.', ',') : ''); setEditandoValor(true) }}
+                      className="text-gray-400 hover:text-blue-500 transition-colors">
+                      <PencilSquareIcon className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Lista de pagamentos */}
+            {pagamentos.length > 0 && (
+              <div className="space-y-1.5 mb-3">
+                {pagamentos.map((pag) => (
+                  <div key={pag.id} className="py-2 px-3 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800/30">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CheckCircleIcon className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                        <span className="text-xs text-gray-700 dark:text-gray-300 truncate">{pag.descricao}</span>
+                        {pag.data_pagamento && (
+                          <span className="text-[11px] text-gray-400 flex-shrink-0">
+                            {new Date(pag.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs font-semibold text-green-700 dark:text-green-400">{fmtBRL(Number(pag.valor))}</span>
+                        {canEdit && (
+                          <button onClick={() => abrirEditarPagamento(pag)} title="Editar lançamento"
+                            className="p-0.5 text-gray-400 hover:text-blue-500 transition-colors">
+                            <PencilSquareIcon className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {(pag.forma_recebimento || pag.destino) && (
+                      <div className="flex gap-3 mt-1 ml-5">
+                        {pag.forma_recebimento && (
+                          <span className="text-[11px] text-gray-400 capitalize">{pag.forma_recebimento.replace(/_/g, ' ')}</span>
+                        )}
+                        {pag.forma_recebimento && pag.destino && <span className="text-[11px] text-gray-300 dark:text-gray-600">·</span>}
+                        {pag.destino && (
+                          <span className="text-[11px] text-gray-400">{pag.destino}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Totais */}
+            {project.valor_contrato != null && (
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="text-center">
+                  <p className="text-[11px] text-gray-400 mb-0.5">Recebido</p>
+                  <p className="text-sm font-bold text-green-600 dark:text-green-400">{fmtBRL(totalRecebido)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[11px] text-gray-400 mb-0.5">Pendente</p>
+                  <p className={`text-sm font-bold ${saldo > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>{fmtBRL(Math.max(0, saldo))}</p>
+                </div>
+                <div className="text-center col-span-2 sm:col-span-1">
+                  <p className="text-[11px] text-gray-400 mb-0.5">Total contrato</p>
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{fmtBRL(Number(project.valor_contrato))}</p>
+                </div>
+              </div>
+            )}
+
+            {pagamentos.length === 0 && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Nenhum pagamento registrado ainda.</p>
+            )}
+            </div>}
+          </div>
+        )
+      })()}
+
+      {/* Modal adicionar pagamento */}
+      {modalPagamento && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Registrar pagamento</h2>
+              <button onClick={() => setModalPagamento(false)}><XMarkIcon className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Descrição</label>
+                <input
+                  type="text"
+                  value={formPagamento.descricao}
+                  onChange={(e) => setFormPagamento((f) => ({ ...f, descricao: e.target.value }))}
+                  placeholder="Ex: Sinal, Parcela 1, Quitação..."
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Valor (R$)</label>
+                <input
+                  type="text"
+                  value={formPagamento.valor}
+                  onChange={(e) => setFormPagamento((f) => ({ ...f, valor: e.target.value }))}
+                  placeholder="0,00"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Data do pagamento</label>
+                <input
+                  type="date"
+                  value={formPagamento.data_pagamento}
+                  onChange={(e) => setFormPagamento((f) => ({ ...f, data_pagamento: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Forma de recebimento</label>
+                <select
+                  value={formPagamento.forma_recebimento}
+                  onChange={(e) => setFormPagamento((f) => ({ ...f, forma_recebimento: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="pix">PIX</option>
+                  <option value="transferencia">Transferência bancária</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="cartao_credito">Cartão de crédito</option>
+                  <option value="cartao_debito">Cartão de débito</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Destino / utilização do valor</label>
+                <input
+                  type="text"
+                  value={formPagamento.destino}
+                  onChange={(e) => setFormPagamento((f) => ({ ...f, destino: e.target.value }))}
+                  placeholder="Ex: Caixa, Fornecedor, Materiais..."
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setModalPagamento(false)}
+                className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                Cancelar
+              </button>
+              <button onClick={adicionarPagamento} disabled={savingPagamento}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
+                {savingPagamento ? 'Salvando...' : 'Registrar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal editar pagamento */}
+      {editandoPagamento && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Editar lançamento</h2>
+              <button onClick={() => setEditandoPagamento(null)}><XMarkIcon className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Descrição</label>
+                <input type="text" value={formEditPagamento.descricao}
+                  onChange={(e) => setFormEditPagamento((f) => ({ ...f, descricao: e.target.value }))}
+                  placeholder="Ex: Sinal, Parcela 1, Quitação..."
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Valor (R$)</label>
+                <input type="text" value={formEditPagamento.valor}
+                  onChange={(e) => setFormEditPagamento((f) => ({ ...f, valor: e.target.value }))}
+                  placeholder="0,00"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Data do pagamento</label>
+                <input type="date" value={formEditPagamento.data_pagamento}
+                  onChange={(e) => setFormEditPagamento((f) => ({ ...f, data_pagamento: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Forma de recebimento</label>
+                <select value={formEditPagamento.forma_recebimento}
+                  onChange={(e) => setFormEditPagamento((f) => ({ ...f, forma_recebimento: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Selecione...</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="pix">PIX</option>
+                  <option value="transferencia">Transferência bancária</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="cartao_credito">Cartão de crédito</option>
+                  <option value="cartao_debito">Cartão de débito</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Destino / utilização do valor</label>
+                <input type="text" value={formEditPagamento.destino}
+                  onChange={(e) => setFormEditPagamento((f) => ({ ...f, destino: e.target.value }))}
+                  placeholder="Ex: Caixa, Fornecedor, Materiais..."
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditandoPagamento(null)}
+                className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                Cancelar
+              </button>
+              <button onClick={salvarEditPagamento} disabled={savingEditPagamento}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
+                {savingEditPagamento ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 mb-6">

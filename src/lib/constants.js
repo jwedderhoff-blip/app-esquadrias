@@ -16,6 +16,7 @@ export const ETAPA_LABEL = Object.fromEntries(ETAPAS.map((e) => [e.key, e.label]
 export const PERFIL_LABEL = {
   operacional: 'Operacional',
   comercial: 'Comercial',
+  financeiro: 'Financeiro',
   administrador: 'Administrador',
   super_admin: 'Super Admin',
 }

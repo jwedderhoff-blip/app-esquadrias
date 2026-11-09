@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PlusIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ETAPAS } from '../lib/constants'
@@ -50,7 +50,7 @@ export default function Carteira() {
   const [search, setSearch] = useState('')
   const [filterEtapa, setFilterEtapa] = useState('')
   const companyId = effectiveCompanyId()
-  const canCreate = ['comercial', 'administrador', 'super_admin'].includes(profile?.perfil)
+  const canCreate = ['comercial', 'financeiro', 'administrador', 'super_admin'].includes(profile?.perfil)
 
   useEffect(() => {
     async function load() {
@@ -86,13 +86,24 @@ export default function Carteira() {
       }
 
       const enriched = (projectsData || []).map((p) => {
-        const items = (checklistItems || []).filter(
+        const etapaItems = (checklistItems || []).filter(
           (i) => i.project_id === p.id && i.etapa === p.etapa_atual
         )
+        const etapaDone = etapaItems.filter((i) => i.concluido).length
+        const etapaTotal = etapaItems.length
+        const etapaPct = etapaTotal > 0 ? Math.round((etapaDone / etapaTotal) * 100) : 0
+
+        // Progresso no pipeline: (índice da etapa + % do checklist atual) / total de etapas
+        const stageIdx = ETAPAS.findIndex((e) => e.key === p.etapa_atual)
+        const partial = etapaTotal > 0 ? etapaDone / etapaTotal : 0
+        const pipelinePct = Math.min(100, Math.round(((Math.max(stageIdx, 0) + partial) / ETAPAS.length) * 100))
+
         return {
           ...p,
-          checklistDone: items.filter((i) => i.concluido).length,
-          checklistTotal: items.length,
+          pipelinePct,
+          etapaDone,
+          etapaTotal,
+          etapaPct,
           prazo: prazoMap[p.id] ?? null,
         }
       })
@@ -108,7 +119,8 @@ export default function Carteira() {
       const q = search.toLowerCase()
       const matchSearch = !search ||
         (p.titulo ?? '').toLowerCase().includes(q) ||
-        (p.cliente ?? '').toLowerCase().includes(q)
+        (p.cliente ?? '').toLowerCase().includes(q) ||
+        (p.numero_pedido ?? '').toLowerCase().includes(q)
       const matchEtapa = !filterEtapa || p.etapa_atual === filterEtapa
       return matchSearch && matchEtapa
     })
@@ -123,15 +135,28 @@ export default function Carteira() {
             {projects.length} projeto{projects.length !== 1 ? 's' : ''}
           </p>
         </div>
-        {canCreate && (
-          <Link
-            to="/projetos/novo"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
-          >
-            <PlusIcon className="w-4 h-4" />
-            Novo projeto
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {companyId && (
+            <a
+              href={`/dashboard/${companyId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition border border-gray-200 dark:border-gray-600"
+            >
+              <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+              Dashboard público
+            </a>
+          )}
+          {canCreate && (
+            <Link
+              to="/projetos/novo"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Novo projeto
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -140,7 +165,7 @@ export default function Carteira() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por título ou cliente..."
+            placeholder="Buscar por título, cliente ou número..."
             className="w-full pl-9 pr-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -174,7 +199,7 @@ export default function Carteira() {
                 <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Nº</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Projeto</th>
-                  <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Cliente</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Cliente</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Etapa</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Prazo</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Checklist</th>
@@ -200,14 +225,42 @@ export default function Carteira() {
                       </span>
                       <p className="text-xs text-gray-400 dark:text-gray-500 sm:hidden mt-0.5">{p.cliente}</p>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden sm:table-cell">{p.cliente}</td>
+                    <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden md:table-cell">{p.cliente}</td>
                     <td className="px-5 py-3.5"><EtapaBadge etapa={p.etapa_atual} /></td>
                     <td className="px-5 py-3.5"><PrazoCell prazo={p.prazo} /></td>
                     <td className="px-5 py-3.5 hidden md:table-cell">
-                      {p.checklistTotal > 0 ? (
-                        <div className="w-28">
-                          <ProgressBar value={p.checklistDone} max={p.checklistTotal} />
-                          <p className="text-xs text-gray-400 mt-0.5">{p.checklistDone}/{p.checklistTotal}</p>
+                      {p.etapaTotal > 0 || p.pipelinePct > 0 ? (
+                        <div className="min-w-[120px]">
+                          {/* Azul = progresso no pipeline (posição da etapa) */}
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-blue-500 rounded-full transition-all"
+                                style={{ width: `${p.pipelinePct}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 w-8 text-right">
+                              {p.pipelinePct}%
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500">Processo geral</p>
+                          {/* Verde = % do checklist da etapa atual */}
+                          {p.etapaTotal > 0 && (
+                            <div className="mt-1.5">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <div className="flex-1 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-emerald-500 rounded-full transition-all"
+                                    style={{ width: `${p.etapaPct}%` }}
+                                  />
+                                </div>
+                                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 w-8 text-right">
+                                  {p.etapaPct}%
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-gray-400 dark:text-gray-500">Etapa: {p.etapaDone}/{p.etapaTotal}</p>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-gray-300 dark:text-gray-600">—</span>

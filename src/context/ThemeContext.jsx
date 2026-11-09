@@ -3,7 +3,11 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const [theme, setThemeState] = useState(() => localStorage.getItem('app_theme') ?? 'system')
+  const [theme, setThemeState] = useState(() => {
+    // v2: if user never explicitly chose a theme in settings, default to system
+    if (!localStorage.getItem('app_theme_v2')) return 'system'
+    return localStorage.getItem('app_theme') ?? 'system'
+  })
   const [notifBrowser, setNotifBrowserState] = useState(
     () => localStorage.getItem('notif_browser') !== 'false'
   )
@@ -32,6 +36,7 @@ export function ThemeProvider({ children }) {
 
   function setTheme(val) {
     localStorage.setItem('app_theme', val)
+    localStorage.setItem('app_theme_v2', '1')
     setThemeState(val)
   }
   function setNotifBrowser(val) {
