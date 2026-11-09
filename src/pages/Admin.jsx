@@ -49,12 +49,16 @@ function ModalEmpresa({ empresa, onClose, onSaved }) {
       setUploading(false)
     }
 
+    const driveFolderIdMatch = driveFolderUrl?.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+    const driveFolderId = driveFolderIdMatch ? driveFolderIdMatch[1] : null
+
     const payload = {
       nome, slug, ativo, logo_url: finalLogoUrl || null,
       endereco: endereco || null, cidade: cidade || null, estado: estado || null,
       whatsapp: whatsapp || null, email_responsavel: emailResp || null,
       site: site || null, instagram: instagram || null,
       drive_folder_url: driveFolderUrl || null,
+      drive_folder_id: driveFolderId,
     }
 
     if (editing) {
