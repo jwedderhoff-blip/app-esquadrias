@@ -114,15 +114,17 @@ export default function Carteira() {
     load()
   }, [companyId])
 
-  const filtered = projects.filter((p) => {
-    const q = search.toLowerCase()
-    const matchSearch = !search ||
-      p.titulo.toLowerCase().includes(q) ||
-      p.cliente.toLowerCase().includes(q) ||
-      (p.numero_pedido ?? '').toLowerCase().includes(q)
-    const matchEtapa = !filterEtapa || p.etapa_atual === filterEtapa
-    return matchSearch && matchEtapa
-  })
+  const filtered = projects
+    .filter((p) => {
+      const q = search.toLowerCase()
+      const matchSearch = !search ||
+        (p.titulo ?? '').toLowerCase().includes(q) ||
+        (p.cliente ?? '').toLowerCase().includes(q) ||
+        (p.numero_pedido ?? '').toLowerCase().includes(q)
+      const matchEtapa = !filterEtapa || p.etapa_atual === filterEtapa
+      return matchSearch && matchEtapa
+    })
+    .sort((a, b) => (parseInt(b.numero_pedido) || 0) - (parseInt(a.numero_pedido) || 0))
 
   return (
     <div>
@@ -195,9 +197,9 @@ export default function Carteira() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Nº</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Projeto</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Nº</th>
-                  <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Cliente</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden sm:table-cell">Cliente</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Etapa</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400">Prazo</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600 dark:text-gray-400 hidden md:table-cell">Checklist</th>
@@ -205,26 +207,25 @@ export default function Carteira() {
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                 {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <td className="px-5 py-3.5">
+                  <tr key={p.id} className="relative hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <td className="px-4 py-3.5">
                       <Link
                         to={`/projetos/${p.id}`}
-                        className="font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                      >
-                        {p.titulo}
-                      </Link>
-                      {p.numero_pedido && (
-                        <span className="ml-2 text-xs font-mono text-blue-500 sm:hidden">{p.numero_pedido}</span>
-                      )}
-                      <p className="text-xs text-gray-400 dark:text-gray-500 md:hidden mt-0.5">{p.cliente}</p>
-                    </td>
-                    <td className="px-4 py-3.5 hidden sm:table-cell">
+                        className="absolute inset-0 z-10"
+                        aria-label={`Abrir projeto ${p.titulo || 'Sem título'}`}
+                      />
                       {p.numero_pedido
                         ? <span className="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded">{p.numero_pedido}</span>
                         : <span className="text-gray-300 dark:text-gray-600">—</span>
                       }
                     </td>
-                    <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden md:table-cell">{p.cliente}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={`font-medium ${p.titulo ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 italic'}`}>
+                        {p.titulo || 'Sem título'}
+                      </span>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 sm:hidden mt-0.5">{p.cliente}</p>
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden sm:table-cell">{p.cliente}</td>
                     <td className="px-5 py-3.5"><EtapaBadge etapa={p.etapa_atual} /></td>
                     <td className="px-5 py-3.5"><PrazoCell prazo={p.prazo} /></td>
                     <td className="px-5 py-3.5 hidden md:table-cell">
