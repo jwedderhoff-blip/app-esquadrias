@@ -118,21 +118,37 @@ function timeAgo(dateStr) {
   } catch { return '' }
 }
 
-const NEWS_GRADIENTS = [
-  'from-blue-900/90 to-blue-950/95',
-  'from-slate-800/90 to-slate-900/95',
-  'from-indigo-900/90 to-indigo-950/95',
-  'from-zinc-800/90 to-zinc-900/95',
-  'from-sky-900/90 to-sky-950/95',
-  'from-gray-800/90 to-gray-900/95',
+const NEWS_BG_COLORS = [
+  { from: '#1e3a5f', via: '#1e293b' },
+  { from: '#1a1f35', via: '#111827' },
+  { from: '#1a2e1a', via: '#111827' },
+  { from: '#2d1f3d', via: '#111827' },
+  { from: '#1f2937', via: '#0f172a' },
+  { from: '#1c2b1c', via: '#111827' },
 ]
+
+function newsDateLabel(dateStr) {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    const diff = Date.now() - d.getTime()
+    const h = Math.floor(diff / 3_600_000)
+    if (h < 1) return 'agora'
+    if (h < 24) return `há ${h}h`
+    const days = Math.floor(h / 24)
+    if (days === 1) return 'ontem'
+    if (days <= 7) return `há ${days} dias`
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  } catch { return '' }
+}
 
 function NewsPanel({ items }) {
   const [active, setActive] = useState(0)
+  const [imgErrors, setImgErrors] = useState({})
 
   useEffect(() => {
     if (!items || items.length === 0) return
-    const id = setInterval(() => setActive((c) => (c + 1) % items.length), 7000)
+    const id = setInterval(() => setActive((c) => (c + 1) % Math.min(items.length, 6)), 7000)
     return () => clearInterval(id)
   }, [items])
 
@@ -144,46 +160,75 @@ function NewsPanel({ items }) {
     )
   }
 
+  const list = items.slice(0, 6)
+
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-          <span className="text-blue-500">◉</span> Notícias do setor
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+          Notícias do setor
         </h2>
-        <span className="text-[10px] text-gray-600">construção civil · esquadrias · alumínio</span>
+        <span className="text-[10px] text-gray-600">construção civil · esquadrias · vidro</span>
       </div>
-      <div className="grid grid-cols-3 gap-0.5 bg-gray-800/30 p-0.5">
-        {items.slice(0, 6).map((item, i) => {
+
+      <div className="grid grid-cols-3 gap-px bg-gray-800">
+        {list.map((item, i) => {
           const isActive = i === active
-          const grad = NEWS_GRADIENTS[i % NEWS_GRADIENTS.length]
+          const bg = NEWS_BG_COLORS[i % NEWS_BG_COLORS.length]
+          const hasImg = item.image && !imgErrors[i]
           return (
             <div
               key={i}
-              className={`relative overflow-hidden rounded-lg transition-all duration-700 ${isActive ? 'ring-2 ring-blue-500/70 scale-[1.02] z-10' : 'opacity-80'}`}
-              style={{ minHeight: '130px' }}
+              onClick={() => setActive(i)}
+              className={`relative overflow-hidden cursor-pointer transition-all duration-500 ${
+                isActive ? 'ring-2 ring-inset ring-blue-500/80 z-10' : 'opacity-75 hover:opacity-90'
+              }`}
+              style={{ minHeight: '140px', background: `linear-gradient(135deg, ${bg.from}, ${bg.via})` }}
             >
               {/* Background image */}
-              {item.image ? (
+              {hasImg && (
                 <img
                   src={item.image}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover"
-                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                  onError={() => setImgErrors((e) => ({ ...e, [i]: true }))}
                 />
-              ) : null}
-              {/* Gradient overlay */}
-              <div className={`absolute inset-0 bg-gradient-to-t ${grad}`} />
+              )}
+              {/* Always show gradient overlay so text is readable */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: hasImg
+                    ? 'linear-gradient(to top, rgba(0,0,0,0.92) 50%, rgba(0,0,0,0.3) 100%)'
+                    : `linear-gradient(135deg, ${bg.from}ee, ${bg.via}dd)`,
+                }}
+              />
+
+              {/* Active highlight bar */}
+              {isActive && (
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500" />
+              )}
+
               {/* Content */}
-              <div className="relative z-10 flex flex-col justify-end h-full p-3" style={{ minHeight: '130px' }}>
-                <p className={`text-xs font-semibold leading-snug line-clamp-3 mb-1.5 ${isActive ? 'text-white' : 'text-gray-200'}`}>
+              <div className="relative z-10 flex flex-col justify-end h-full p-3" style={{ minHeight: '140px' }}>
+                {/* Category icon placeholder when no image */}
+                {!hasImg && (
+                  <div className="absolute top-3 right-3 text-2xl opacity-20 select-none">🏗️</div>
+                )}
+                <p className={`text-xs font-semibold leading-snug line-clamp-3 mb-2 ${isActive ? 'text-white' : 'text-gray-200'}`}>
                   {item.title}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-1">
                   {item.source && (
-                    <span className="text-[10px] text-blue-300 font-medium truncate max-w-[100px]">{item.source}</span>
+                    <span className={`text-[10px] font-semibold truncate max-w-[110px] ${isActive ? 'text-blue-300' : 'text-gray-400'}`}>
+                      {item.source}
+                    </span>
                   )}
                   {item.pubDate && (
-                    <span className="text-[10px] text-gray-500">{timeAgo(item.pubDate)}</span>
+                    <span className={`text-[10px] flex-shrink-0 ${isActive ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {newsDateLabel(item.pubDate)}
+                    </span>
                   )}
                 </div>
               </div>
@@ -191,13 +236,16 @@ function NewsPanel({ items }) {
           )
         })}
       </div>
-      {/* Dots indicator */}
-      <div className="flex justify-center gap-1.5 py-2">
-        {items.slice(0, 6).map((_, i) => (
+
+      {/* Progress dots */}
+      <div className="flex justify-center items-center gap-1.5 py-2.5">
+        {list.map((_, i) => (
           <button
             key={i}
             onClick={() => setActive(i)}
-            className={`rounded-full transition-all duration-300 ${i === active ? 'w-4 h-1.5 bg-blue-500' : 'w-1.5 h-1.5 bg-gray-700'}`}
+            className={`rounded-full transition-all duration-300 ${
+              i === active ? 'w-5 h-1.5 bg-blue-500' : 'w-1.5 h-1.5 bg-gray-700 hover:bg-gray-500'
+            }`}
           />
         ))}
       </div>

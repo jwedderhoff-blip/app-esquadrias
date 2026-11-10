@@ -6,71 +6,70 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-async function fetchOgImage(articleUrl: string): Promise<string | null> {
-  try {
-    const res = await fetch(articleUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DashboardBot/1.0)' },
-      signal: AbortSignal.timeout(3000),
-      redirect: 'follow',
-    })
-    if (!res.ok) return null
-    // Read only first 32KB — og:image is always in <head>
-    const reader = res.body?.getReader()
-    if (!reader) return null
-    let html = ''
-    while (html.length < 32768) {
-      const { done, value } = await reader.read()
-      if (done) break
-      html += new TextDecoder().decode(value)
-    }
-    reader.cancel()
-    const m =
-      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
-      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i)
-    return m?.[1] ?? null
-  } catch {
-    return null
-  }
+function extractImageFromRssBlock(block: string): string | null {
+  // 1. <media:content url="...">
+  const media = block.match(/<media:content[^>]+url=["']([^"']{12,})["']/i)?.[1]
+  if (media) return media
+
+  // 2. <enclosure url="..." type="image/...">
+  const enclosure =
+    block.match(/<enclosure[^>]+type=["']image[^"']*["'][^>]+url=["']([^"']{12,})["']/i)?.[1] ||
+    block.match(/<enclosure[^>]+url=["']([^"']{12,})["'][^>]+type=["']image[^"']*["']/i)?.[1]
+  if (enclosure) return enclosure
+
+  // 3. <img src="..."> inside <description>
+  const desc =
+    (block.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/i) ||
+      block.match(/<description>([\s\S]*?)<\/description>/i))?.[1] ?? ''
+  const descImg = desc.match(/<img[^>]+src=["']([^"']{12,})["']/i)?.[1]
+  if (descImg) return descImg
+
+  return null
 }
 
-async function fetchSectorNews(): Promise<Array<{ title: string; source: string; pubDate: string; link: string; image: string | null }>> {
+async function fetchSectorNews(): Promise<
+  Array<{ title: string; source: string; pubDate: string; link: string; image: string | null }>
+> {
   try {
-    const rssUrl = 'https://news.google.com/rss/search?q=esquadrias+alum%C3%ADnio+constru%C3%A7%C3%A3o+civil&hl=pt-BR&gl=BR&ceid=BR:pt-419'
+    // Filter to last 14 days for freshness
+    const cutoff = new Date(Date.now() - 14 * 24 * 3600 * 1000)
+    const afterDate = cutoff.toISOString().split('T')[0]
+
+    const q = encodeURIComponent(
+      `esquadrias alumínio vidro construção civil normas ABNT after:${afterDate}`
+    )
+    const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=pt-BR&gl=BR&ceid=BR:pt-419`
+
     const res = await fetch(rssUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DashboardBot/1.0)' },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(6000),
     })
     if (!res.ok) return []
     const xml = await res.text()
 
-    const items: Array<{ title: string; source: string; pubDate: string; link: string }> = []
+    const items: Array<{ title: string; source: string; pubDate: string; link: string; image: string | null }> = []
     const itemRegex = /<item>([\s\S]*?)<\/item>/g
     let match
     while ((match = itemRegex.exec(xml)) !== null && items.length < 6) {
       const block = match[1]
       const rawTitle =
-        (block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || block.match(/<title>(.*?)<\/title>/))?.[1] ?? ''
+        (block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) ||
+          block.match(/<title>(.*?)<\/title>/))?.[1] ?? ''
       const link =
-        (block.match(/<link>(.*?)<\/link>/) || block.match(/<guid[^>]*>(.*?)<\/guid>/))?.[1] ?? ''
+        (block.match(/<link>(.*?)<\/link>/) ||
+          block.match(/<guid[^>]*>(.*?)<\/guid>/))?.[1] ?? ''
       const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? ''
       const sourceTag = block.match(/<source[^>]*>(.*?)<\/source>/)?.[1] ?? ''
+      const image = extractImageFromRssBlock(block)
 
       const sourceFromTitle = rawTitle.match(/ - ([^-]+)$/)
       const title = rawTitle.replace(/ - [^-]+$/, '').trim()
       const source = sourceTag || sourceFromTitle?.[1]?.trim() || ''
 
-      if (title) items.push({ title, source, pubDate, link })
+      if (title) items.push({ title, source, pubDate, link, image })
     }
 
-    // Fetch og:image for all items in parallel
-    const images = await Promise.allSettled(items.map((item) => fetchOgImage(item.link)))
-
-    return items.map((item, i) => ({
-      ...item,
-      image: images[i].status === 'fulfilled' ? images[i].value : null,
-    }))
+    return items
   } catch {
     return []
   }
@@ -85,7 +84,8 @@ serve(async (req) => {
 
     if (!companyId) {
       return new Response(JSON.stringify({ error: 'company_id obrigatório' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -102,7 +102,8 @@ serve(async (req) => {
 
     if (compErr || !company) {
       return new Response(JSON.stringify({ error: 'Empresa não encontrada' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -116,7 +117,13 @@ serve(async (req) => {
 
     let checklistStats: { project_id: string; concluido: boolean }[] = []
     let prazosData: { project_id: string; dados: Record<string, string> | null }[] = []
-    let activityData: { project_id: string; criado_em: string; acao: string; detalhe: string | null; users: { nome: string } | null }[] = []
+    let activityData: {
+      project_id: string
+      criado_em: string
+      acao: string
+      detalhe: string | null
+      users: { nome: string } | null
+    }[] = []
     let compraIniciadaIds: Set<string> = new Set()
     let pagamentosData: { project_id: string; valor: number }[] = []
 
@@ -124,10 +131,7 @@ serve(async (req) => {
 
     if (projectIds.length) {
       const [statsRes, prazosRes, activityRes, compraRes, pagRes] = await Promise.all([
-        supabase
-          .from('checklist_items')
-          .select('project_id, concluido')
-          .in('project_id', projectIds),
+        supabase.from('checklist_items').select('project_id, concluido').in('project_id', projectIds),
         supabase
           .from('checklist_items')
           .select('project_id, dados')
@@ -145,25 +149,22 @@ serve(async (req) => {
           .in('project_id', projectIds)
           .eq('descricao', 'Orçamentos realizados')
           .eq('concluido', true),
-        supabase
-          .from('pagamentos')
-          .select('project_id, valor')
-          .in('project_id', projectIds),
+        supabase.from('pagamentos').select('project_id, valor').in('project_id', projectIds),
       ])
       checklistStats = statsRes.data || []
       prazosData = prazosRes.data || []
       activityData = (activityRes.data || []) as typeof activityData
-      compraIniciadaIds = new Set((compraRes.data || []).map((r: { project_id: string }) => r.project_id))
+      compraIniciadaIds = new Set(
+        (compraRes.data || []).map((r: { project_id: string }) => r.project_id)
+      )
       pagamentosData = (pagRes.data || []) as typeof pagamentosData
     }
 
     const news = await newsPromise
 
-    // Pagamentos por projeto
     const pagByProject: Record<string, number> = {}
-    for (const pg of pagamentosData) {
+    for (const pg of pagamentosData)
       pagByProject[pg.project_id] = (pagByProject[pg.project_id] || 0) + Number(pg.valor)
-    }
 
     const statsByProject: Record<string, { total: number; done: number }> = {}
     for (const item of checklistStats) {
@@ -173,11 +174,12 @@ serve(async (req) => {
     }
 
     const prazoByProject: Record<string, string | null> = {}
-    for (const item of prazosData) {
-      prazoByProject[item.project_id] = item.dados?.prazo ?? null
-    }
+    for (const item of prazosData) prazoByProject[item.project_id] = item.dados?.prazo ?? null
 
-    const lastActivityByProject: Record<string, { nome: string; em: string; acao: string; detalhe: string | null }> = {}
+    const lastActivityByProject: Record<
+      string,
+      { nome: string; em: string; acao: string; detalhe: string | null }
+    > = {}
     for (const item of activityData) {
       if (!lastActivityByProject[item.project_id]) {
         lastActivityByProject[item.project_id] = {
@@ -189,47 +191,68 @@ serve(async (req) => {
       }
     }
 
-    const projectsWithStats = (projects || []).map((p) => {
-      const totalRecebido = pagByProject[p.id] || 0
-      const saldo = p.valor_contrato != null ? Math.max(0, Number(p.valor_contrato) - totalRecebido) : null
-      return {
-        ...p,
-        checklist_total: statsByProject[p.id]?.total ?? 0,
-        checklist_done: statsByProject[p.id]?.done ?? 0,
-        prazo_pedido: prazoByProject[p.id] ?? null,
-        ultima_alteracao: lastActivityByProject[p.id] ?? null,
-        compra_material_iniciada: compraIniciadaIds.has(p.id),
-        total_recebido: totalRecebido,
-        saldo_pendente: saldo,
-      }
-    }).sort((a, b) => {
-      const aDate = a.ultima_alteracao?.em ?? a.atualizado_em ?? a.criado_em
-      const bDate = b.ultima_alteracao?.em ?? b.atualizado_em ?? b.criado_em
-      return new Date(bDate).getTime() - new Date(aDate).getTime()
-    })
+    const projectsWithStats = (projects || [])
+      .map((p) => {
+        const totalRecebido = pagByProject[p.id] || 0
+        const saldo =
+          p.valor_contrato != null ? Math.max(0, Number(p.valor_contrato) - totalRecebido) : null
+        return {
+          ...p,
+          checklist_total: statsByProject[p.id]?.total ?? 0,
+          checklist_done: statsByProject[p.id]?.done ?? 0,
+          prazo_pedido: prazoByProject[p.id] ?? null,
+          ultima_alteracao: lastActivityByProject[p.id] ?? null,
+          compra_material_iniciada: compraIniciadaIds.has(p.id),
+          total_recebido: totalRecebido,
+          saldo_pendente: saldo,
+        }
+      })
+      .sort((a, b) => {
+        const aDate = a.ultima_alteracao?.em ?? a.atualizado_em ?? a.criado_em
+        const bDate = b.ultima_alteracao?.em ?? b.atualizado_em ?? b.criado_em
+        return new Date(bDate).getTime() - new Date(aDate).getTime()
+      })
 
-    const comContrato = projectsWithStats.filter((p) => p.valor_contrato != null && p.etapa_atual !== 'encerrado')
+    const comContrato = projectsWithStats.filter(
+      (p) => p.valor_contrato != null && p.etapa_atual !== 'encerrado'
+    )
     const totalContratos = comContrato.reduce((s, p) => s + Number(p.valor_contrato), 0)
     const totalRecebido = comContrato.reduce((s, p) => s + (p.total_recebido || 0), 0)
     const totalAReceber = totalContratos - totalRecebido
-    const pctRecebido = totalContratos > 0 ? Math.round((totalRecebido / totalContratos) * 100) : 0
+    const pctRecebido =
+      totalContratos > 0 ? Math.round((totalRecebido / totalContratos) * 100) : 0
 
     const topPendencias = projectsWithStats
-      .filter((p) => p.saldo_pendente != null && p.saldo_pendente > 0.01 && p.etapa_atual !== 'encerrado')
+      .filter(
+        (p) => p.saldo_pendente != null && p.saldo_pendente > 0.01 && p.etapa_atual !== 'encerrado'
+      )
       .sort((a, b) => (b.saldo_pendente ?? 0) - (a.saldo_pendente ?? 0))
       .slice(0, 5)
-      .map((p) => ({ id: p.id, titulo: p.titulo, cliente: p.cliente, etapa_atual: p.etapa_atual, saldo_pendente: p.saldo_pendente }))
+      .map((p) => ({
+        id: p.id,
+        titulo: p.titulo,
+        cliente: p.cliente,
+        etapa_atual: p.etapa_atual,
+        saldo_pendente: p.saldo_pendente,
+      }))
 
     const financial = { totalContratos, totalRecebido, totalAReceber, pctRecebido, topPendencias }
 
     return new Response(
-      JSON.stringify({ company, projects: projectsWithStats, financial, news, generated_at: new Date().toISOString() }),
+      JSON.stringify({
+        company,
+        projects: projectsWithStats,
+        financial,
+        news,
+        generated_at: new Date().toISOString(),
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 })
