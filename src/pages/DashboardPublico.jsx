@@ -280,6 +280,80 @@ function buildCarouselCards(projects) {
     .slice(0, 12)
 }
 
+function FinanceiroPainel({ financial, isDark }) {
+  const { totalContratos, totalRecebido, totalAReceber, pctRecebido, topPendencias } = financial
+  const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+
+  const barColor = pctRecebido >= 80 ? '#22c55e' : pctRecebido >= 50 ? '#3b82f6' : '#f59e0b'
+
+  return (
+    <div className="bg-gray-900 dark:bg-gray-950 rounded-2xl border border-gray-700 p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-gray-300 mb-5">💰 Resumo Financeiro — Carteira Ativa</h2>
+
+      {/* 3 métricas principais */}
+      <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="bg-gray-800 rounded-xl p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Contratos ativos</p>
+          <p className="text-2xl font-extrabold text-gray-100 leading-none">{fmtBRL(totalContratos)}</p>
+        </div>
+        <div className="bg-green-900/40 border border-green-700/40 rounded-xl p-4">
+          <p className="text-xs text-green-500 uppercase tracking-wide mb-1">Recebido</p>
+          <p className="text-2xl font-extrabold text-green-400 leading-none">{fmtBRL(totalRecebido)}</p>
+        </div>
+        <div className={`rounded-xl p-4 border ${totalAReceber > 0 ? 'bg-amber-900/30 border-amber-700/40' : 'bg-gray-800 border-gray-700'}`}>
+          <p className={`text-xs uppercase tracking-wide mb-1 ${totalAReceber > 0 ? 'text-amber-400' : 'text-gray-500'}`}>A receber</p>
+          <p className={`text-2xl font-extrabold leading-none ${totalAReceber > 0 ? 'text-amber-400' : 'text-gray-400'}`}>{fmtBRL(totalAReceber)}</p>
+        </div>
+      </div>
+
+      {/* Barra de progresso */}
+      <div className="mb-5">
+        <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+          <span>Recebimento da carteira</span>
+          <span className="font-bold" style={{ color: barColor }}>{pctRecebido}% recebido</span>
+        </div>
+        <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-1000"
+            style={{ width: `${pctRecebido}%`, backgroundColor: barColor }}
+          />
+        </div>
+      </div>
+
+      {/* Top pendências */}
+      {topPendencias.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Maiores pendências</p>
+          <div className="space-y-2">
+            {topPendencias.map((p) => {
+              const e = ETAPA_MAP[p.etapa_atual]
+              return (
+                <div key={p.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-gray-800 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-200 truncate">{p.titulo || p.cliente}</p>
+                    {p.titulo && <p className="text-xs text-gray-500 truncate">{p.cliente}</p>}
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                      style={{ backgroundColor: e?.darkBg ?? '#1e293b', color: e?.darkText ?? '#94a3b8' }}>
+                      {e?.label ?? p.etapa_atual}
+                    </span>
+                    <span className="text-sm font-bold text-amber-400">{fmtBRL(p.saldo_pendente)}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {topPendencias.length === 0 && (
+        <p className="text-center text-green-400 font-semibold text-sm py-2">✓ Carteira totalmente quitada</p>
+      )}
+    </div>
+  )
+}
+
 function RecentCarousel({ projects, isDark, tvMode }) {
   const trackRef = useRef(null)
   const [canLeft, setCanLeft] = useState(false)
@@ -453,7 +527,7 @@ export default function DashboardPublico() {
     </div>
   )
 
-  const { company, projects, generated_at } = data
+  const { company, projects, financial, generated_at } = data
   const total = projects.length
   const encerrados = projects.filter((p) => p.etapa_atual === 'encerrado').length
   const emAndamento = total - encerrados
@@ -565,11 +639,16 @@ export default function DashboardPublico() {
           {/* Carrossel de projetos em destaque */}
           <RecentCarousel projects={projects} isDark={isDark} tvMode={tvMode} />
 
-          {/* Pipeline */}
-          <div className={`bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm ${tvMode ? 'p-6' : 'p-5'}`}>
-            <h2 className={`font-semibold text-gray-700 dark:text-gray-300 mb-4 ${tvMode ? 'text-base' : 'text-sm'}`}>Pipeline de projetos por etapa</h2>
-            <StagePipeline projects={projects} />
-          </div>
+          {/* Pipeline (modo normal) / Painel Financeiro (modo TV) */}
+          {tvMode && financial
+            ? <FinanceiroPainel financial={financial} isDark={isDark} />
+            : (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Pipeline de projetos por etapa</h2>
+                <StagePipeline projects={projects} />
+              </div>
+            )
+          }
 
           {/* Lista filtrada */}
           <div>

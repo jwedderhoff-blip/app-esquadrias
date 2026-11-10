@@ -38,7 +38,7 @@ serve(async (req) => {
 
     const { data: projects } = await supabase
       .from('projects')
-      .select('id, titulo, cliente, etapa_atual, criado_em, atualizado_em')
+      .select('id, titulo, cliente, etapa_atual, criado_em, atualizado_em, valor_contrato')
       .eq('company_id', companyId)
       .order('atualizado_em', { ascending: false })
 
@@ -48,8 +48,9 @@ serve(async (req) => {
     let prazosData: { project_id: string; dados: Record<string, string> | null }[] = []
     let activityData: { project_id: string; criado_em: string; acao: string; detalhe: string | null; users: { nome: string } | null }[] = []
     let compraIniciadaIds: Set<string> = new Set()
+    let pagamentosData: { project_id: string; valor: number }[] = []
     if (projectIds.length) {
-      const [statsRes, prazosRes, activityRes, compraRes] = await Promise.all([
+      const [statsRes, prazosRes, activityRes, compraRes, pagRes] = await Promise.all([
         supabase
           .from('checklist_items')
           .select('project_id, concluido')
@@ -71,11 +72,22 @@ serve(async (req) => {
           .in('project_id', projectIds)
           .eq('descricao', 'Orçamentos realizados')
           .eq('concluido', true),
+        supabase
+          .from('pagamentos')
+          .select('project_id, valor')
+          .in('project_id', projectIds),
       ])
       checklistStats = statsRes.data || []
       prazosData = prazosRes.data || []
       activityData = (activityRes.data || []) as typeof activityData
       compraIniciadaIds = new Set((compraRes.data || []).map((r: { project_id: string }) => r.project_id))
+      pagamentosData = (pagRes.data || []) as typeof pagamentosData
+    }
+
+    // Pagamentos por projeto
+    const pagByProject: Record<string, number> = {}
+    for (const pg of pagamentosData) {
+      pagByProject[pg.project_id] = (pagByProject[pg.project_id] || 0) + Number(pg.valor)
     }
 
     const statsByProject: Record<string, { total: number; done: number }> = {}
@@ -103,21 +115,43 @@ serve(async (req) => {
       }
     }
 
-    const projectsWithStats = (projects || []).map((p) => ({
-      ...p,
-      checklist_total: statsByProject[p.id]?.total ?? 0,
-      checklist_done: statsByProject[p.id]?.done ?? 0,
-      prazo_pedido: prazoByProject[p.id] ?? null,
-      ultima_alteracao: lastActivityByProject[p.id] ?? null,
-      compra_material_iniciada: compraIniciadaIds.has(p.id),
-    })).sort((a, b) => {
+    const projectsWithStats = (projects || []).map((p) => {
+      const totalRecebido = pagByProject[p.id] || 0
+      const saldo = p.valor_contrato != null ? Math.max(0, Number(p.valor_contrato) - totalRecebido) : null
+      return {
+        ...p,
+        checklist_total: statsByProject[p.id]?.total ?? 0,
+        checklist_done: statsByProject[p.id]?.done ?? 0,
+        prazo_pedido: prazoByProject[p.id] ?? null,
+        ultima_alteracao: lastActivityByProject[p.id] ?? null,
+        compra_material_iniciada: compraIniciadaIds.has(p.id),
+        total_recebido: totalRecebido,
+        saldo_pendente: saldo,
+      }
+    }).sort((a, b) => {
       const aDate = a.ultima_alteracao?.em ?? a.atualizado_em ?? a.criado_em
       const bDate = b.ultima_alteracao?.em ?? b.atualizado_em ?? b.criado_em
       return new Date(bDate).getTime() - new Date(aDate).getTime()
     })
 
+    // Resumo financeiro agregado (apenas projetos com valor_contrato definido)
+    const comContrato = projectsWithStats.filter((p) => p.valor_contrato != null && p.etapa_atual !== 'encerrado')
+    const totalContratos = comContrato.reduce((s, p) => s + Number(p.valor_contrato), 0)
+    const totalRecebido = comContrato.reduce((s, p) => s + (p.total_recebido || 0), 0)
+    const totalAReceber = totalContratos - totalRecebido
+    const pctRecebido = totalContratos > 0 ? Math.round((totalRecebido / totalContratos) * 100) : 0
+
+    // Top pendências: projetos ativos com maior saldo_pendente
+    const topPendencias = projectsWithStats
+      .filter((p) => p.saldo_pendente != null && p.saldo_pendente > 0.01 && p.etapa_atual !== 'encerrado')
+      .sort((a, b) => (b.saldo_pendente ?? 0) - (a.saldo_pendente ?? 0))
+      .slice(0, 5)
+      .map((p) => ({ id: p.id, titulo: p.titulo, cliente: p.cliente, etapa_atual: p.etapa_atual, saldo_pendente: p.saldo_pendente }))
+
+    const financial = { totalContratos, totalRecebido, totalAReceber, pctRecebido, topPendencias }
+
     return new Response(
-      JSON.stringify({ company, projects: projectsWithStats, generated_at: new Date().toISOString() }),
+      JSON.stringify({ company, projects: projectsWithStats, financial, generated_at: new Date().toISOString() }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (err) {
