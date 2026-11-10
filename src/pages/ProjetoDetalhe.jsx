@@ -551,6 +551,11 @@ export default function ProjetoDetalhe() {
   const viewingCurrentEtapa = (selectedEtapa ?? project.etapa_atual) === project.etapa_atual
   const allDone = checklistItems.length > 0 && checklistItems.every((i) => i.concluido)
 
+  const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const totalRecebido = pagamentos.reduce((s, p) => s + Number(p.valor), 0)
+  const saldo = (project.valor_contrato ?? 0) - totalRecebido
+  const temContrato = project.valor_contrato != null
+
   return (
     <div>
       <button
@@ -607,6 +612,20 @@ export default function ProjetoDetalhe() {
               <span className="text-xs text-gray-400 dark:text-gray-500">Responsável: {project.users?.nome ?? '—'}</span>
             </div>
           </div>
+
+          {/* Resumo financeiro */}
+          {temContrato && (
+            <div className="flex flex-col justify-center gap-1.5 px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 min-w-[150px] self-center">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">A receber</p>
+              <p className={`text-2xl font-extrabold leading-none ${saldo > 0.005 ? 'text-amber-500 dark:text-amber-400' : 'text-green-500 dark:text-green-400'}`}>
+                {saldo > 0.005 ? fmtBRL(saldo) : 'Quitado ✓'}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                {fmtBRL(Number(project.valor_contrato))} total
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-col items-end gap-3 flex-shrink-0">
             {/* Círculo de progresso */}
             {(() => {
