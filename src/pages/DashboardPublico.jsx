@@ -426,6 +426,19 @@ export default function DashboardPublico() {
     return () => clearInterval(refreshRef.current)
   }, [tvMode, fetchData])
 
+  // TV mode: auto-cycle etapa filter every 12s (must be before early returns)
+  useEffect(() => {
+    if (!tvMode || !data) return
+    const etapaKeys = ['todas', ...ETAPAS.filter((e) => data.projects.some((p) => p.etapa_atual === e.key)).map((e) => e.key)]
+    const id = setInterval(() => {
+      setFilterEtapa((cur) => {
+        const idx = etapaKeys.indexOf(cur)
+        return etapaKeys[(idx + 1) % etapaKeys.length]
+      })
+    }, 12000)
+    return () => clearInterval(id)
+  }, [tvMode, data])
+
   const ThemeIcon = THEME_ICON[theme] ?? ComputerDesktopIcon
 
   if (loading) return (
@@ -451,19 +464,6 @@ export default function DashboardPublico() {
   const etapasComProjetos = ETAPAS.filter((e) => projects.some((p) => p.etapa_atual === e.key))
   const filterOptions = [{ key: 'todas', label: 'Todas as etapas' }, ...etapasComProjetos]
   const filtered = filterEtapa === 'todas' ? projects : projects.filter((p) => p.etapa_atual === filterEtapa)
-
-  // TV mode: auto-cycle etapa filter every 12s
-  useEffect(() => {
-    if (!tvMode || !data) return
-    const opts = filterOptions.map((o) => o.key)
-    const id = setInterval(() => {
-      setFilterEtapa((cur) => {
-        const idx = opts.indexOf(cur)
-        return opts[(idx + 1) % opts.length]
-      })
-    }, 12000)
-    return () => clearInterval(id)
-  }, [tvMode, data])
 
   const tickerItems = [
     { label: 'Total de projetos', value: total, dotColor: '#94a3b8', valueColor: '#f8fafc' },
