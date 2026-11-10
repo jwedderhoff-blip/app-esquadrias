@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline'
+import { SunIcon, MoonIcon, ComputerDesktopIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 
 const ETAPAS = [
   { key: 'pedido',          label: 'Pedido',              color: '#64748b', bg: '#f1f5f9', text: '#334155', darkBg: '#1e293b', darkText: '#94a3b8' },
@@ -209,6 +209,146 @@ function ProjectCard({ p, isDark }) {
   )
 }
 
+function CarouselCard({ p, isDark }) {
+  const e = ETAPA_MAP[p.etapa_atual] || { label: p.etapa_atual, color: '#94a3b8', bg: '#f8fafc', text: '#475569', darkBg: '#1e293b', darkText: '#94a3b8' }
+  const badgeStyle = isDark
+    ? { backgroundColor: e.darkBg, color: e.darkText }
+    : { backgroundColor: e.bg, color: e.text }
+
+  const stageIdx = ETAPAS.findIndex((et) => et.key === p.etapa_atual)
+  const checklistPartial = p.checklist_total > 0 ? p.checklist_done / p.checklist_total : 0
+  const pct = Math.min(100, Math.round(((stageIdx + checklistPartial) / ETAPAS.length) * 100))
+  const pctColor = pct === 100 ? '#22c55e' : pct >= 60 ? '#3b82f6' : pct >= 30 ? '#f59e0b' : '#94a3b8'
+
+  return (
+    <div className="flex-shrink-0 w-56 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm flex flex-col gap-2">
+      {/* Urgência */}
+      {p._urgBadge && (
+        <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full w-fit ${
+          p._urgLevel === 2
+            ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+        }`}>
+          {p._urgLevel === 2 ? '🔴' : '⚠️'} {p._urgBadge}
+        </div>
+      )}
+      {/* Título + etapa */}
+      <div>
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-snug">{p.titulo}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">{p.cliente}</p>
+      </div>
+      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold w-fit" style={badgeStyle}>{e.label}</span>
+      {/* Progresso */}
+      <div>
+        <div className="flex justify-between text-[10px] mb-0.5">
+          <span className="text-gray-400 dark:text-gray-500">Progresso</span>
+          <span className="font-bold" style={{ color: pctColor }}>{pct}%</span>
+        </div>
+        <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pctColor }} />
+        </div>
+      </div>
+      {/* Última alteração */}
+      {p.ultima_alteracao && (
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate mt-auto">
+          {getAcaoIcon(p.ultima_alteracao.acao)} {format(new Date(p.ultima_alteracao.em), "dd/MM HH:mm", { locale: ptBR })}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function RecentCarousel({ projects, isDark }) {
+  const trackRef = useRef(null)
+  const [canLeft, setCanLeft] = useState(false)
+  const [canRight, setCanRight] = useState(true)
+
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+
+  const cards = projects
+    .filter((p) => p.etapa_atual !== 'encerrado')
+    .map((p) => {
+      let _urgLevel = 0
+      let _urgBadge = null
+      if (p.prazo_pedido) {
+        const deadline = new Date(p.prazo_pedido + 'T00:00:00')
+        const dias = Math.round((deadline - today) / (1000 * 60 * 60 * 24))
+        if (dias < 0)        { _urgLevel = 2; _urgBadge = `${Math.abs(dias)}d em atraso` }
+        else if (dias === 0) { _urgLevel = 2; _urgBadge = 'Vence hoje' }
+        else if (dias <= 7)  { _urgLevel = 1; _urgBadge = `${dias}d p/ prazo` }
+      }
+      return { ...p, _urgLevel, _urgBadge }
+    })
+    .sort((a, b) => {
+      if (b._urgLevel !== a._urgLevel) return b._urgLevel - a._urgLevel
+      return new Date(b.atualizado_em || b.criado_em) - new Date(a.atualizado_em || a.criado_em)
+    })
+    .slice(0, 12)
+
+  function checkScroll() {
+    const el = trackRef.current
+    if (!el) return
+    setCanLeft(el.scrollLeft > 8)
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8)
+  }
+
+  function scroll(dir) {
+    const el = trackRef.current
+    if (!el) return
+    el.scrollBy({ left: dir * 240, behavior: 'smooth' })
+  }
+
+  useEffect(() => { checkScroll() }, [cards.length])
+
+  const urgentCount = cards.filter((c) => c._urgLevel > 0).length
+
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Projetos em destaque</h2>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+            Recentes e prazos próximos
+            {urgentCount > 0 && (
+              <span className="ml-2 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-semibold px-1.5 py-0.5 rounded-full">
+                {urgentCount} atenção
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => scroll(-1)}
+            disabled={!canLeft}
+            className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+          >
+            <ChevronLeftIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => scroll(1)}
+            disabled={!canRight}
+            className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+          >
+            <ChevronRightIcon className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+      <div
+        ref={trackRef}
+        onScroll={checkScroll}
+        className="flex gap-3 overflow-x-auto pb-1 scroll-smooth"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        <style>{`.carousel-track::-webkit-scrollbar { display: none; }`}</style>
+        {cards.length === 0
+          ? <p className="text-sm text-gray-400 dark:text-gray-600 py-4">Nenhum projeto em andamento.</p>
+          : cards.map((p) => <CarouselCard key={p.id} p={p} isDark={isDark} />)
+        }
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPublico() {
   const { companyId } = useParams()
   const [data, setData] = useState(null)
@@ -360,37 +500,8 @@ export default function DashboardPublico() {
 
         <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
-          {/* 4 cards principais */}
-          {(() => {
-            const qtdContrato   = projects.filter((p) => p.etapa_atual === 'contrato').length
-            const qtdCompra     = projects.filter((p) => p.etapa_atual === 'compra_material' || p.compra_material_iniciada).length
-            const qtdFabricacao = projects.filter((p) => p.etapa_atual === 'fabricacao').length
-            const qtdEntrega    = projects.filter((p) => p.etapa_atual === 'pronto_entrega').length
-            const cards = [
-              { label: 'Contrato Assinado',    value: qtdContrato,   color: 'from-violet-500 to-violet-600',   highlight: false },
-              { label: 'Compra de Material',   value: qtdCompra,     color: 'from-amber-500 to-orange-500',    highlight: false },
-              { label: 'Em Fabricação',        value: qtdFabricacao, color: 'from-blue-500 to-blue-700',       highlight: true  },
-              { label: 'Pronto para Entrega',  value: qtdEntrega,    color: 'from-emerald-500 to-green-600',   highlight: false },
-            ]
-            return (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {cards.map(({ label, value, color, highlight }) => (
-                  <div
-                    key={label}
-                    className={`bg-gradient-to-br ${color} rounded-2xl p-5 shadow-sm text-white flex flex-col justify-between ${highlight ? 'ring-4 ring-blue-300 dark:ring-blue-400 scale-[1.03] shadow-lg' : ''}`}
-                    style={highlight ? { transition: 'transform 0.2s' } : {}}
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-wide opacity-80 leading-snug">{label}</p>
-                    <p className="text-5xl font-extrabold mt-3 leading-none">{value}</p>
-                    <div className="mt-4 h-1.5 bg-white/30 rounded-full overflow-hidden">
-                      <div className="h-full bg-white rounded-full" style={{ width: total > 0 ? `${Math.round((value / total) * 100)}%` : '0%' }} />
-                    </div>
-                    <p className="text-[11px] opacity-60 mt-1">{total > 0 ? Math.round((value / total) * 100) : 0}% do total</p>
-                  </div>
-                ))}
-              </div>
-            )
-          })()}
+          {/* Carrossel de projetos em destaque */}
+          <RecentCarousel projects={projects} isDark={isDark} />
 
           {/* Pipeline */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
