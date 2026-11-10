@@ -6,6 +6,41 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+async function fetchSectorNews(): Promise<Array<{ title: string; source: string; pubDate: string; link: string }>> {
+  try {
+    const rssUrl = 'https://news.google.com/rss/search?q=esquadrias+alum%C3%ADnio+constru%C3%A7%C3%A3o+civil&hl=pt-BR&gl=BR&ceid=BR:pt-419'
+    const res = await fetch(rssUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DashboardBot/1.0)' },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return []
+    const xml = await res.text()
+
+    const items: Array<{ title: string; source: string; pubDate: string; link: string }> = []
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g
+    let match
+    while ((match = itemRegex.exec(xml)) !== null && items.length < 8) {
+      const block = match[1]
+      const rawTitle =
+        (block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || block.match(/<title>(.*?)<\/title>/))?.[1] ?? ''
+      const link =
+        (block.match(/<link>(.*?)<\/link>/) || block.match(/<guid[^>]*>(.*?)<\/guid>/))?.[1] ?? ''
+      const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? ''
+      const sourceTag = block.match(/<source[^>]*>(.*?)<\/source>/)?.[1] ?? ''
+
+      // Google News embeds source at end of title as " - Source"
+      const sourceFromTitle = rawTitle.match(/ - ([^-]+)$/)
+      const title = rawTitle.replace(/ - [^-]+$/, '').trim()
+      const source = sourceTag || sourceFromTitle?.[1]?.trim() || ''
+
+      if (title) items.push({ title, source, pubDate, link })
+    }
+    return items
+  } catch {
+    return []
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -49,6 +84,9 @@ serve(async (req) => {
     let activityData: { project_id: string; criado_em: string; acao: string; detalhe: string | null; users: { nome: string } | null }[] = []
     let compraIniciadaIds: Set<string> = new Set()
     let pagamentosData: { project_id: string; valor: number }[] = []
+
+    const newsPromise = fetchSectorNews()
+
     if (projectIds.length) {
       const [statsRes, prazosRes, activityRes, compraRes, pagRes] = await Promise.all([
         supabase
@@ -84,6 +122,8 @@ serve(async (req) => {
       pagamentosData = (pagRes.data || []) as typeof pagamentosData
     }
 
+    const news = await newsPromise
+
     // Pagamentos por projeto
     const pagByProject: Record<string, number> = {}
     for (const pg of pagamentosData) {
@@ -102,7 +142,6 @@ serve(async (req) => {
       prazoByProject[item.project_id] = item.dados?.prazo ?? null
     }
 
-    // Última alteração por projeto (primeiro registro = mais recente, pois ordenado DESC)
     const lastActivityByProject: Record<string, { nome: string; em: string; acao: string; detalhe: string | null }> = {}
     for (const item of activityData) {
       if (!lastActivityByProject[item.project_id]) {
@@ -134,14 +173,12 @@ serve(async (req) => {
       return new Date(bDate).getTime() - new Date(aDate).getTime()
     })
 
-    // Resumo financeiro agregado (apenas projetos com valor_contrato definido)
     const comContrato = projectsWithStats.filter((p) => p.valor_contrato != null && p.etapa_atual !== 'encerrado')
     const totalContratos = comContrato.reduce((s, p) => s + Number(p.valor_contrato), 0)
     const totalRecebido = comContrato.reduce((s, p) => s + (p.total_recebido || 0), 0)
     const totalAReceber = totalContratos - totalRecebido
     const pctRecebido = totalContratos > 0 ? Math.round((totalRecebido / totalContratos) * 100) : 0
 
-    // Top pendências: projetos ativos com maior saldo_pendente
     const topPendencias = projectsWithStats
       .filter((p) => p.saldo_pendente != null && p.saldo_pendente > 0.01 && p.etapa_atual !== 'encerrado')
       .sort((a, b) => (b.saldo_pendente ?? 0) - (a.saldo_pendente ?? 0))
@@ -151,7 +188,7 @@ serve(async (req) => {
     const financial = { totalContratos, totalRecebido, totalAReceber, pctRecebido, topPendencias }
 
     return new Response(
-      JSON.stringify({ company, projects: projectsWithStats, financial, generated_at: new Date().toISOString() }),
+      JSON.stringify({ company, projects: projectsWithStats, financial, news, generated_at: new Date().toISOString() }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (err) {
