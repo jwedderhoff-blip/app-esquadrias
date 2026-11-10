@@ -409,12 +409,12 @@ function RecentCarousel({ projects, isDark, tvMode }) {
       if (!el) return
       const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8
       if (atEnd) el.scrollTo({ left: 0, behavior: 'smooth' })
-      else el.scrollBy({ left: 288, behavior: 'smooth' })
+      else el.scrollBy({ left: 384, behavior: 'smooth' })
     }, 5000)
     return () => clearInterval(id)
   }, [tvMode, cards.length])
 
-  const cardW = tvMode ? 'w-72' : 'w-56'
+  const cardW = tvMode ? 'w-96' : 'w-56'
 
   return (
     <div className={`bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm ${tvMode ? 'p-6' : 'p-5'}`}>
