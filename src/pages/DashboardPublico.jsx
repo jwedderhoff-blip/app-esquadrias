@@ -699,8 +699,14 @@ export default function DashboardPublico() {
               )
             })()}
 
-            {/* Carrossel ocupa o restante */}
+            {/* Carrossel */}
             <RecentCarousel projects={projects} isDark={isDark} tvMode={tvMode} />
+
+            {/* Pipeline — ocupa o espaço restante */}
+            <div className="bg-gray-900 rounded-2xl border border-gray-700 px-6 py-4">
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Pipeline por etapa</h2>
+              <StagePipeline projects={projects} />
+            </div>
           </div>
         ) : (
           /* ── MODO NORMAL ── */
