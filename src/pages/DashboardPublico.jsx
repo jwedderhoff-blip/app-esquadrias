@@ -106,6 +106,71 @@ function StagePipeline({ projects }) {
   )
 }
 
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    const diff = Date.now() - d.getTime()
+    const h = Math.floor(diff / 3_600_000)
+    if (h < 1) return 'agora'
+    if (h < 24) return `${h}h atrás`
+    return `${Math.floor(h / 24)}d atrás`
+  } catch { return '' }
+}
+
+function NewsPanel({ items }) {
+  const [active, setActive] = useState(0)
+
+  useEffect(() => {
+    if (!items || items.length === 0) return
+    const id = setInterval(() => setActive((c) => (c + 1) % items.length), 6000)
+    return () => clearInterval(id)
+  }, [items])
+
+  if (!items || items.length === 0) {
+    return (
+      <div className="bg-gray-900 rounded-2xl border border-gray-700 px-6 py-4 flex items-center justify-center">
+        <p className="text-xs text-gray-600">Notícias indisponíveis no momento.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-gray-900 rounded-2xl border border-gray-700 px-6 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+          <span className="text-blue-500">◉</span> Notícias do setor
+        </h2>
+        <span className="text-[10px] text-gray-600">construção civil · esquadrias</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {items.slice(0, 6).map((item, i) => (
+          <div
+            key={i}
+            className={`rounded-xl px-4 py-3 border transition-all duration-500 ${
+              i === active
+                ? 'border-blue-700/60 bg-blue-950/40'
+                : 'border-gray-700/50 bg-gray-800/30'
+            }`}
+          >
+            <p className={`text-sm font-medium leading-snug line-clamp-2 ${i === active ? 'text-gray-100' : 'text-gray-400'}`}>
+              {item.title}
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              {item.source && (
+                <span className="text-[10px] text-blue-400 font-semibold truncate max-w-[120px]">{item.source}</span>
+              )}
+              {item.pubDate && (
+                <span className="text-[10px] text-gray-600">{timeAgo(item.pubDate)}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function getAcaoLabel(acao, detalhe) {
   if (acao === 'etapa_avancada') {
     const m = detalhe?.match(/para "(.+?)"/)
@@ -551,7 +616,7 @@ export default function DashboardPublico() {
     </div>
   )
 
-  const { company, projects, financial, generated_at } = data
+  const { company, projects, financial, news, generated_at } = data
   const total = projects.length
   const encerrados = projects.filter((p) => p.etapa_atual === 'encerrado').length
   const emAndamento = total - encerrados
@@ -702,11 +767,8 @@ export default function DashboardPublico() {
             {/* Carrossel */}
             <RecentCarousel projects={projects} isDark={isDark} tvMode={tvMode} />
 
-            {/* Pipeline — ocupa o espaço restante */}
-            <div className="bg-gray-900 rounded-2xl border border-gray-700 px-6 py-4">
-              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Pipeline por etapa</h2>
-              <StagePipeline projects={projects} />
-            </div>
+            {/* Notícias do setor */}
+            <NewsPanel items={news || []} />
           </div>
         ) : (
           /* ── MODO NORMAL ── */
