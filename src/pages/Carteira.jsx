@@ -67,7 +67,7 @@ export default function Carteira() {
       const ids = (projectsData || []).map((p) => p.id)
       if (!ids.length) { setProjects([]); setLoading(false); return }
 
-      const [{ data: checklistItems }, { data: prazosData }] = await Promise.all([
+      const [{ data: checklistItems }, { data: prazosData }, { data: pagamentosData }] = await Promise.all([
         supabase
           .from('checklist_items')
           .select('project_id, etapa, concluido')
@@ -78,11 +78,20 @@ export default function Carteira() {
           .in('project_id', ids)
           .eq('descricao', 'Prazo solicitado pelo cliente')
           .eq('etapa', 'pedido'),
+        supabase
+          .from('pagamentos')
+          .select('project_id, valor')
+          .in('project_id', ids),
       ])
 
       const prazoMap = {}
       for (const item of prazosData || []) {
         prazoMap[item.project_id] = item.dados?.prazo ?? null
+      }
+
+      const pagMap = {}
+      for (const pg of pagamentosData || []) {
+        pagMap[pg.project_id] = (pagMap[pg.project_id] || 0) + Number(pg.valor)
       }
 
       const enriched = (projectsData || []).map((p) => {
@@ -98,6 +107,9 @@ export default function Carteira() {
         const partial = etapaTotal > 0 ? etapaDone / etapaTotal : 0
         const pipelinePct = Math.min(100, Math.round(((Math.max(stageIdx, 0) + partial) / ETAPAS.length) * 100))
 
+        const totalRecebido = pagMap[p.id] || 0
+        const saldoPendente = p.valor_contrato != null ? Math.max(0, Number(p.valor_contrato) - totalRecebido) : null
+
         return {
           ...p,
           pipelinePct,
@@ -105,6 +117,7 @@ export default function Carteira() {
           etapaTotal,
           etapaPct,
           prazo: prazoMap[p.id] ?? null,
+          saldoPendente,
         }
       })
 
@@ -124,7 +137,12 @@ export default function Carteira() {
       const matchEtapa = !filterEtapa || p.etapa_atual === filterEtapa
       return matchSearch && matchEtapa
     })
-    .sort((a, b) => (parseInt(b.numero_pedido) || 0) - (parseInt(a.numero_pedido) || 0))
+    .sort((a, b) => {
+      const aEnc = a.etapa_atual === 'encerrado' ? 1 : 0
+      const bEnc = b.etapa_atual === 'encerrado' ? 1 : 0
+      if (aEnc !== bEnc) return aEnc - bEnc
+      return (parseInt(b.numero_pedido) || 0) - (parseInt(a.numero_pedido) || 0)
+    })
 
   return (
     <div>
@@ -207,7 +225,11 @@ export default function Carteira() {
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                 {filtered.map((p) => (
-                  <tr key={p.id} className="relative hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <tr key={p.id} className={`relative transition-colors ${
+                    p.etapa_atual === 'encerrado' && p.saldoPendente > 0.005
+                      ? 'bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}>
                     <td className="px-4 py-3.5">
                       <Link
                         to={`/projetos/${p.id}`}
@@ -226,7 +248,14 @@ export default function Carteira() {
                       <p className="text-xs text-gray-400 dark:text-gray-500 sm:hidden mt-0.5">{p.cliente}</p>
                     </td>
                     <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 hidden sm:table-cell">{p.cliente}</td>
-                    <td className="px-5 py-3.5"><EtapaBadge etapa={p.etapa_atual} /></td>
+                    <td className="px-5 py-3.5">
+                      <EtapaBadge etapa={p.etapa_atual} />
+                      {p.etapa_atual === 'encerrado' && p.saldoPendente != null && p.saldoPendente > 0.005 && (
+                        <span className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                          ⚠ Pend. fin.
+                        </span>
+                      )}
+                    </td>
                     <td className="px-5 py-3.5"><PrazoCell prazo={p.prazo} /></td>
                     <td className="px-5 py-3.5 hidden md:table-cell">
                       {p.etapaTotal > 0 || p.pipelinePct > 0 ? (
