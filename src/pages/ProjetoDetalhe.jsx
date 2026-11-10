@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, EllipsisVerticalIcon, PencilSquareIcon, TrashIcon, XMarkIcon, PlusIcon, BanknotesIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, EllipsisVerticalIcon, PencilSquareIcon, TrashIcon, XMarkIcon, PlusIcon, BanknotesIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, PaperClipIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ETAPAS, ETAPA_INDEX } from '../lib/constants'
@@ -212,9 +212,11 @@ export default function ProjetoDetalhe() {
   const [valorInput, setValorInput] = useState('')
   const [modalPagamento, setModalPagamento] = useState(false)
   const [formPagamento, setFormPagamento] = useState({ descricao: '', valor: '', data_pagamento: '', forma_recebimento: '', destino: '' })
+  const [comprovanteFile, setComprovanteFile] = useState(null)
   const [savingPagamento, setSavingPagamento] = useState(false)
   const [editandoPagamento, setEditandoPagamento] = useState(null)
   const [formEditPagamento, setFormEditPagamento] = useState({ descricao: '', valor: '', data_pagamento: '', forma_recebimento: '', destino: '' })
+  const [comprovanteEditFile, setComprovanteEditFile] = useState(null)
   const [savingEditPagamento, setSavingEditPagamento] = useState(false)
   const [financeiroAberto, setFinanceiroAberto] = useState(() => {
     try { return localStorage.getItem('financeiro_aberto') !== 'false' } catch { return true }
@@ -327,7 +329,7 @@ export default function ProjetoDetalhe() {
     if (isNaN(valor) || valor <= 0) { toast.error('Valor inválido'); return }
     if (!formPagamento.descricao.trim()) { toast.error('Informe uma descrição'); return }
     setSavingPagamento(true)
-    const { error } = await supabase.from('pagamentos').insert({
+    const { data: pag, error } = await supabase.from('pagamentos').insert({
       project_id: id,
       company_id: project.company_id,
       descricao: formPagamento.descricao.trim(),
@@ -336,10 +338,22 @@ export default function ProjetoDetalhe() {
       forma_recebimento: formPagamento.forma_recebimento || null,
       destino: formPagamento.destino.trim() || null,
       criado_por: session.user.id,
-    })
+    }).select().single()
+    if (error) { setSavingPagamento(false); toast.error('Erro: ' + error.message); return }
+
+    if (comprovanteFile && pag) {
+      const ext = comprovanteFile.name.split('.').pop()
+      const path = `comprovantes/${project.company_id}/${pag.id}.${ext}`
+      const { data: up } = await supabase.storage.from('documents').upload(path, comprovanteFile, { upsert: true })
+      if (up) {
+        const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
+        await supabase.from('pagamentos').update({ comprovante_url: publicUrl }).eq('id', pag.id)
+      }
+    }
+
     setSavingPagamento(false)
-    if (error) { toast.error('Erro: ' + error.message); return }
     setFormPagamento({ descricao: '', valor: '', data_pagamento: '', forma_recebimento: '', destino: '' })
+    setComprovanteFile(null)
     setModalPagamento(false)
     fetchPagamentos()
     toast.success('Pagamento registrado')
@@ -353,6 +367,7 @@ export default function ProjetoDetalhe() {
       forma_recebimento: pag.forma_recebimento || '',
       destino: pag.destino || '',
     })
+    setComprovanteEditFile(null)
     setEditandoPagamento(pag)
   }
 
@@ -361,15 +376,29 @@ export default function ProjetoDetalhe() {
     if (isNaN(valor) || valor <= 0) { toast.error('Valor inválido'); return }
     if (!formEditPagamento.descricao.trim()) { toast.error('Informe uma descrição'); return }
     setSavingEditPagamento(true)
+
+    let comprovante_url = editandoPagamento.comprovante_url ?? null
+    if (comprovanteEditFile) {
+      const ext = comprovanteEditFile.name.split('.').pop()
+      const path = `comprovantes/${editandoPagamento.project_id ?? id}/${editandoPagamento.id}.${ext}`
+      const { data: up } = await supabase.storage.from('documents').upload(path, comprovanteEditFile, { upsert: true })
+      if (up) {
+        const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
+        comprovante_url = publicUrl
+      }
+    }
+
     const { error } = await supabase.from('pagamentos').update({
       descricao: formEditPagamento.descricao.trim(),
       valor,
       data_pagamento: formEditPagamento.data_pagamento || null,
       forma_recebimento: formEditPagamento.forma_recebimento || null,
       destino: formEditPagamento.destino.trim() || null,
+      comprovante_url,
     }).eq('id', editandoPagamento.id)
     setSavingEditPagamento(false)
     if (error) { toast.error('Erro: ' + error.message); return }
+    setComprovanteEditFile(null)
     setEditandoPagamento(null)
     fetchPagamentos()
     toast.success('Pagamento atualizado')
@@ -797,14 +826,24 @@ export default function ProjetoDetalhe() {
                         )}
                       </div>
                     </div>
-                    {(pag.forma_recebimento || pag.destino) && (
-                      <div className="flex gap-3 mt-1 ml-5">
+                    {(pag.forma_recebimento || pag.destino || pag.comprovante_url) && (
+                      <div className="flex flex-wrap gap-3 mt-1 ml-5">
                         {pag.forma_recebimento && (
                           <span className="text-[11px] text-gray-400 capitalize">{pag.forma_recebimento.replace(/_/g, ' ')}</span>
                         )}
                         {pag.forma_recebimento && pag.destino && <span className="text-[11px] text-gray-300 dark:text-gray-600">·</span>}
                         {pag.destino && (
                           <span className="text-[11px] text-gray-400">{pag.destino}</span>
+                        )}
+                        {pag.comprovante_url && (
+                          <>
+                            {(pag.forma_recebimento || pag.destino) && <span className="text-[11px] text-gray-300 dark:text-gray-600">·</span>}
+                            <a href={pag.comprovante_url} target="_blank" rel="noopener noreferrer"
+                              className="text-[11px] text-blue-500 hover:underline flex items-center gap-0.5">
+                              <PaperClipIcon className="w-3 h-3" />
+                              comprovante
+                            </a>
+                          </>
                         )}
                       </div>
                     )}
@@ -904,9 +943,20 @@ export default function ProjetoDetalhe() {
                   className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Comprovante <span className="text-gray-400 font-normal">(opcional)</span></label>
+                <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 cursor-pointer hover:border-blue-400 transition-colors">
+                  <PaperClipIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    {comprovanteFile ? comprovanteFile.name : 'Anexar arquivo...'}
+                  </span>
+                  <input type="file" accept="image/*,.pdf" className="hidden"
+                    onChange={(e) => setComprovanteFile(e.target.files?.[0] ?? null)} />
+                </label>
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setModalPagamento(false)}
+              <button onClick={() => { setModalPagamento(false); setComprovanteFile(null) }}
                 className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                 Cancelar
               </button>
@@ -970,9 +1020,27 @@ export default function ProjetoDetalhe() {
                   placeholder="Ex: Caixa, Fornecedor, Materiais..."
                   className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Comprovante <span className="text-gray-400 font-normal">(opcional)</span></label>
+                {editandoPagamento?.comprovante_url && !comprovanteEditFile && (
+                  <a href={editandoPagamento.comprovante_url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-blue-500 hover:underline mb-1.5">
+                    <PaperClipIcon className="w-3.5 h-3.5" />
+                    Ver comprovante atual
+                  </a>
+                )}
+                <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 cursor-pointer hover:border-blue-400 transition-colors">
+                  <PaperClipIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    {comprovanteEditFile ? comprovanteEditFile.name : 'Substituir / anexar arquivo...'}
+                  </span>
+                  <input type="file" accept="image/*,.pdf" className="hidden"
+                    onChange={(e) => setComprovanteEditFile(e.target.files?.[0] ?? null)} />
+                </label>
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setEditandoPagamento(null)}
+              <button onClick={() => { setEditandoPagamento(null); setComprovanteEditFile(null) }}
                 className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                 Cancelar
               </button>
