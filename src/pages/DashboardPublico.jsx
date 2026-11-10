@@ -223,22 +223,32 @@ function CarouselCard({ p, isDark, cardW = 'w-56' }) {
 
   const urgBorderColor = p._urgLevel === 2 ? 'border-red-500/60' : p._urgLevel === 1 ? 'border-amber-400/60' : 'border-gray-100 dark:border-gray-700'
 
+  const fmtBRL = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+  const temFinanceiro = p.valor_contrato != null
+  const saldo = p.saldo_pendente ?? 0
+  const quitado = temFinanceiro && saldo < 0.01
+
   return (
     <div className={`flex-shrink-0 ${cardW} bg-white dark:bg-gray-800 rounded-2xl border-2 ${urgBorderColor} ${tv ? 'p-5' : 'p-4'} shadow-sm flex flex-col gap-2`}>
+      {/* Urgência */}
       {p._urgBadge && (
         <div className={`flex items-center gap-1 font-bold px-2 py-0.5 rounded-full w-fit ${tv ? 'text-xs' : 'text-[11px]'} ${
-          p._urgLevel === 2
-            ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
-            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+          p._urgLevel === 2 ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
         }`}>
           {p._urgLevel === 2 ? '🔴' : '⚠️'} {p._urgBadge}
         </div>
       )}
+
+      {/* Título + cliente */}
       <div>
         <p className={`font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-snug ${tv ? 'text-base' : 'text-sm'}`}>{p.titulo}</p>
         <p className={`text-gray-400 dark:text-gray-500 truncate mt-0.5 ${tv ? 'text-sm' : 'text-xs'}`}>{p.cliente}</p>
       </div>
+
       <span className={`px-2 py-0.5 rounded-full font-semibold w-fit ${tv ? 'text-xs' : 'text-[11px]'}`} style={badgeStyle}>{e.label}</span>
+
+      {/* Progresso */}
       <div>
         <div className={`flex justify-between mb-0.5 ${tv ? 'text-xs' : 'text-[10px]'}`}>
           <span className="text-gray-400 dark:text-gray-500">Progresso</span>
@@ -248,8 +258,22 @@ function CarouselCard({ p, isDark, cardW = 'w-56' }) {
           <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pctColor }} />
         </div>
       </div>
-      {p.ultima_alteracao && (
-        <p className={`text-gray-400 dark:text-gray-500 truncate mt-auto ${tv ? 'text-xs' : 'text-[10px]'}`}>
+
+      {/* Financeiro (TV mode) */}
+      {tv && temFinanceiro && (
+        <div className="mt-1 pt-2 border-t border-gray-700/50">
+          <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-0.5">A receber</p>
+          {quitado
+            ? <p className="text-sm font-bold text-green-400">✓ Quitado</p>
+            : <p className="text-lg font-extrabold text-amber-400 leading-none">{fmtBRL(saldo)}</p>
+          }
+          {!quitado && <p className="text-[11px] text-gray-600 mt-0.5">{fmtBRL(Number(p.valor_contrato))} total</p>}
+        </div>
+      )}
+
+      {/* Última alteração (modo normal) */}
+      {!tv && p.ultima_alteracao && (
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate mt-auto">
           {getAcaoIcon(p.ultima_alteracao.acao)} {format(new Date(p.ultima_alteracao.em), "dd/MM HH:mm", { locale: ptBR })}
         </p>
       )}
@@ -634,66 +658,87 @@ export default function DashboardPublico() {
         {/* Ticker */}
         <Ticker items={tickerItems} />
 
-        <div className={`${tvMode ? 'px-6 py-4' : 'max-w-5xl mx-auto px-4 py-6'} space-y-5`}>
+        {tvMode ? (
+          /* ── TV MODE: tudo em uma tela, sem scroll ── */
+          <div className="px-6 py-4 flex flex-col gap-4">
+            {/* KPIs compactos (linha única) */}
+            {financial && (() => {
+              const fmtBRL = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+              const barColor = financial.pctRecebido >= 80 ? '#22c55e' : financial.pctRecebido >= 50 ? '#3b82f6' : '#f59e0b'
+              return (
+                <div className="flex items-center gap-4 bg-gray-900 rounded-2xl px-5 py-3 border border-gray-700">
+                  <div className="flex-shrink-0">
+                    <p className="text-[11px] text-gray-500 uppercase tracking-wide">Carteira ativa</p>
+                    <p className="text-lg font-extrabold text-gray-100">{fmtBRL(financial.totalContratos)}</p>
+                  </div>
+                  <div className="w-px h-10 bg-gray-700 flex-shrink-0" />
+                  <div className="flex-shrink-0">
+                    <p className="text-[11px] text-green-500 uppercase tracking-wide">Recebido</p>
+                    <p className="text-lg font-extrabold text-green-400">{fmtBRL(financial.totalRecebido)}</p>
+                  </div>
+                  <div className="w-px h-10 bg-gray-700 flex-shrink-0" />
+                  <div className="flex-shrink-0">
+                    <p className="text-[11px] text-amber-400 uppercase tracking-wide">A receber</p>
+                    <p className="text-lg font-extrabold text-amber-400">{fmtBRL(financial.totalAReceber)}</p>
+                  </div>
+                  <div className="flex-1 ml-2">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Recebimento</span>
+                      <span className="font-bold" style={{ color: barColor }}>{financial.pctRecebido}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${financial.pctRecebido}%`, backgroundColor: barColor }} />
+                    </div>
+                  </div>
+                  <div className="w-px h-10 bg-gray-700 flex-shrink-0" />
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-[11px] text-gray-500 uppercase tracking-wide">Projetos ativos</p>
+                    <p className="text-lg font-extrabold text-gray-100">{projects.filter(p => p.etapa_atual !== 'encerrado').length}</p>
+                  </div>
+                </div>
+              )
+            })()}
 
-          {/* Carrossel de projetos em destaque */}
-          <RecentCarousel projects={projects} isDark={isDark} tvMode={tvMode} />
+            {/* Carrossel ocupa o restante */}
+            <RecentCarousel projects={projects} isDark={isDark} tvMode={tvMode} />
+          </div>
+        ) : (
+          /* ── MODO NORMAL ── */
+          <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+            <RecentCarousel projects={projects} isDark={isDark} tvMode={false} />
 
-          {/* Pipeline (modo normal) / Painel Financeiro (modo TV) */}
-          {tvMode && financial
-            ? <FinanceiroPainel financial={financial} isDark={isDark} />
-            : (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Pipeline de projetos por etapa</h2>
-                <StagePipeline projects={projects} />
-              </div>
-            )
-          }
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Pipeline de projetos por etapa</h2>
+              <StagePipeline projects={projects} />
+            </div>
 
-          {/* Lista filtrada */}
-          <div>
-            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <div className="flex items-center gap-3">
-                <h2 className={`font-semibold text-gray-700 dark:text-gray-300 ${tvMode ? 'text-base' : 'text-sm'}`}>
-                  Projetos ({filtered.length})
-                </h2>
-                {tvMode && (
-                  <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-900/40 text-blue-300">
-                    {filterOptions.find((o) => o.key === filterEtapa)?.label ?? 'Todas as etapas'}
-                  </span>
-                )}
-              </div>
-              {!tvMode && (
+            <div>
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Projetos ({filtered.length})</h2>
                 <div className="flex gap-1.5 flex-wrap">
                   {filterOptions.map((o) => (
-                    <button
-                      key={o.key}
-                      onClick={() => setFilterEtapa(o.key)}
+                    <button key={o.key} onClick={() => setFilterEtapa(o.key)}
                       className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                         filterEtapa === o.key
                           ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                           : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
+                      }`}>
                       {o.label}
                     </button>
                   ))}
                 </div>
-              )}
+              </div>
+              {filtered.length === 0
+                ? <p className="text-center text-gray-400 dark:text-gray-600 text-sm py-8">Nenhum projeto nesta etapa.</p>
+                : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map((p) => <ProjectCard key={p.id} p={p} isDark={isDark} />)}
+                  </div>
+              }
             </div>
 
-            {filtered.length === 0
-              ? <p className={`text-center text-gray-400 dark:text-gray-600 py-8 ${tvMode ? 'text-base' : 'text-sm'}`}>Nenhum projeto nesta etapa.</p>
-              : (
-                <div className={`grid gap-4 ${tvMode ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-                  {filtered.map((p) => <ProjectCard key={p.id} p={p} isDark={isDark} />)}
-                </div>
-              )
-            }
+            <p className="text-center text-xs text-gray-300 dark:text-gray-700 pb-4">App Esquadrias</p>
           </div>
-
-          <p className="text-center text-xs text-gray-300 dark:text-gray-700 pb-4">App Esquadrias</p>
-        </div>
+        )}
       </div>
   )
 }
