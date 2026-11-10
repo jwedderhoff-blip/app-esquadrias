@@ -6,7 +6,36 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-async function fetchSectorNews(): Promise<Array<{ title: string; source: string; pubDate: string; link: string }>> {
+async function fetchOgImage(articleUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(articleUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DashboardBot/1.0)' },
+      signal: AbortSignal.timeout(3000),
+      redirect: 'follow',
+    })
+    if (!res.ok) return null
+    // Read only first 32KB — og:image is always in <head>
+    const reader = res.body?.getReader()
+    if (!reader) return null
+    let html = ''
+    while (html.length < 32768) {
+      const { done, value } = await reader.read()
+      if (done) break
+      html += new TextDecoder().decode(value)
+    }
+    reader.cancel()
+    const m =
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
+      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i)
+    return m?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+async function fetchSectorNews(): Promise<Array<{ title: string; source: string; pubDate: string; link: string; image: string | null }>> {
   try {
     const rssUrl = 'https://news.google.com/rss/search?q=esquadrias+alum%C3%ADnio+constru%C3%A7%C3%A3o+civil&hl=pt-BR&gl=BR&ceid=BR:pt-419'
     const res = await fetch(rssUrl, {
@@ -19,7 +48,7 @@ async function fetchSectorNews(): Promise<Array<{ title: string; source: string;
     const items: Array<{ title: string; source: string; pubDate: string; link: string }> = []
     const itemRegex = /<item>([\s\S]*?)<\/item>/g
     let match
-    while ((match = itemRegex.exec(xml)) !== null && items.length < 8) {
+    while ((match = itemRegex.exec(xml)) !== null && items.length < 6) {
       const block = match[1]
       const rawTitle =
         (block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || block.match(/<title>(.*?)<\/title>/))?.[1] ?? ''
@@ -28,14 +57,20 @@ async function fetchSectorNews(): Promise<Array<{ title: string; source: string;
       const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? ''
       const sourceTag = block.match(/<source[^>]*>(.*?)<\/source>/)?.[1] ?? ''
 
-      // Google News embeds source at end of title as " - Source"
       const sourceFromTitle = rawTitle.match(/ - ([^-]+)$/)
       const title = rawTitle.replace(/ - [^-]+$/, '').trim()
       const source = sourceTag || sourceFromTitle?.[1]?.trim() || ''
 
       if (title) items.push({ title, source, pubDate, link })
     }
-    return items
+
+    // Fetch og:image for all items in parallel
+    const images = await Promise.allSettled(items.map((item) => fetchOgImage(item.link)))
+
+    return items.map((item, i) => ({
+      ...item,
+      image: images[i].status === 'fulfilled' ? images[i].value : null,
+    }))
   } catch {
     return []
   }

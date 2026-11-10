@@ -118,53 +118,87 @@ function timeAgo(dateStr) {
   } catch { return '' }
 }
 
+const NEWS_GRADIENTS = [
+  'from-blue-900/90 to-blue-950/95',
+  'from-slate-800/90 to-slate-900/95',
+  'from-indigo-900/90 to-indigo-950/95',
+  'from-zinc-800/90 to-zinc-900/95',
+  'from-sky-900/90 to-sky-950/95',
+  'from-gray-800/90 to-gray-900/95',
+]
+
 function NewsPanel({ items }) {
   const [active, setActive] = useState(0)
 
   useEffect(() => {
     if (!items || items.length === 0) return
-    const id = setInterval(() => setActive((c) => (c + 1) % items.length), 6000)
+    const id = setInterval(() => setActive((c) => (c + 1) % items.length), 7000)
     return () => clearInterval(id)
   }, [items])
 
   if (!items || items.length === 0) {
     return (
-      <div className="bg-gray-900 rounded-2xl border border-gray-700 px-6 py-4 flex items-center justify-center">
+      <div className="bg-gray-900 rounded-2xl border border-gray-700 px-6 py-4 flex items-center justify-center min-h-[180px]">
         <p className="text-xs text-gray-600">Notícias indisponíveis no momento.</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-700 px-6 py-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
           <span className="text-blue-500">◉</span> Notícias do setor
         </h2>
-        <span className="text-[10px] text-gray-600">construção civil · esquadrias</span>
+        <span className="text-[10px] text-gray-600">construção civil · esquadrias · alumínio</span>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {items.slice(0, 6).map((item, i) => (
-          <div
-            key={i}
-            className={`rounded-xl px-4 py-3 border transition-all duration-500 ${
-              i === active
-                ? 'border-blue-700/60 bg-blue-950/40'
-                : 'border-gray-700/50 bg-gray-800/30'
-            }`}
-          >
-            <p className={`text-sm font-medium leading-snug line-clamp-2 ${i === active ? 'text-gray-100' : 'text-gray-400'}`}>
-              {item.title}
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              {item.source && (
-                <span className="text-[10px] text-blue-400 font-semibold truncate max-w-[120px]">{item.source}</span>
-              )}
-              {item.pubDate && (
-                <span className="text-[10px] text-gray-600">{timeAgo(item.pubDate)}</span>
-              )}
+      <div className="grid grid-cols-3 gap-0.5 bg-gray-800/30 p-0.5">
+        {items.slice(0, 6).map((item, i) => {
+          const isActive = i === active
+          const grad = NEWS_GRADIENTS[i % NEWS_GRADIENTS.length]
+          return (
+            <div
+              key={i}
+              className={`relative overflow-hidden rounded-lg transition-all duration-700 ${isActive ? 'ring-2 ring-blue-500/70 scale-[1.02] z-10' : 'opacity-80'}`}
+              style={{ minHeight: '130px' }}
+            >
+              {/* Background image */}
+              {item.image ? (
+                <img
+                  src={item.image}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                />
+              ) : null}
+              {/* Gradient overlay */}
+              <div className={`absolute inset-0 bg-gradient-to-t ${grad}`} />
+              {/* Content */}
+              <div className="relative z-10 flex flex-col justify-end h-full p-3" style={{ minHeight: '130px' }}>
+                <p className={`text-xs font-semibold leading-snug line-clamp-3 mb-1.5 ${isActive ? 'text-white' : 'text-gray-200'}`}>
+                  {item.title}
+                </p>
+                <div className="flex items-center gap-2">
+                  {item.source && (
+                    <span className="text-[10px] text-blue-300 font-medium truncate max-w-[100px]">{item.source}</span>
+                  )}
+                  {item.pubDate && (
+                    <span className="text-[10px] text-gray-500">{timeAgo(item.pubDate)}</span>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )
+        })}
+      </div>
+      {/* Dots indicator */}
+      <div className="flex justify-center gap-1.5 py-2">
+        {items.slice(0, 6).map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setActive(i)}
+            className={`rounded-full transition-all duration-300 ${i === active ? 'w-4 h-1.5 bg-blue-500' : 'w-1.5 h-1.5 bg-gray-700'}`}
+          />
         ))}
       </div>
     </div>
