@@ -401,27 +401,71 @@ function RecentCarousel({ projects, isDark, tvMode }) {
 
   useEffect(() => { checkScroll() }, [cards.length])
 
-  // TV mode: auto-advance every 5s, loop back to start
-  useEffect(() => {
-    if (!tvMode) return
-    const id = setInterval(() => {
-      const el = trackRef.current
-      if (!el) return
-      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8
-      if (atEnd) el.scrollTo({ left: 0, behavior: 'smooth' })
-      else el.scrollBy({ left: 384, behavior: 'smooth' })
-    }, 5000)
-    return () => clearInterval(id)
-  }, [tvMode, cards.length])
+  // TV mode: animação CSS contínua — sem setInterval
+  if (tvMode) {
+    const doubled = [...cards, ...cards]
+    // velocidade: ~100px/s — cada card tem 384px + 16px gap = 400px
+    const duration = Math.max(cards.length * 4, 12)
 
-  const cardW = tvMode ? 'w-96' : 'w-56'
+    return (
+      <div className="bg-gray-900 rounded-2xl border border-gray-700 p-5 h-full flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-gray-200">Projetos em destaque</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Recentes e prazos próximos
+              {urgentCount > 0 && (
+                <span className="ml-2 bg-amber-900/40 text-amber-400 font-semibold px-1.5 py-0.5 rounded-full">
+                  {urgentCount} atenção
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes tv-scroll {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          .tv-scroll-track {
+            display: flex;
+            align-items: stretch;
+            width: max-content;
+            gap: 16px;
+            animation: tv-scroll ${duration}s linear infinite;
+          }
+          .tv-scroll-track:hover { animation-play-state: paused; }
+        `}</style>
+
+        <div className="flex-1 overflow-hidden">
+          {cards.length === 0
+            ? <p className="text-sm text-gray-600 py-4">Nenhum projeto em andamento.</p>
+            : (
+              <div className="tv-scroll-track h-full">
+                {doubled.map((p, i) => (
+                  <CarouselCard
+                    key={`${p.id}-${i}`}
+                    p={{ ...p, _tvMode: true }}
+                    isDark={isDark}
+                    cardW="w-96"
+                    tvStretch={true}
+                  />
+                ))}
+              </div>
+            )
+          }
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className={`bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm ${tvMode ? 'p-6 h-full flex flex-col' : 'p-5'}`}>
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className={`font-semibold text-gray-700 dark:text-gray-300 ${tvMode ? 'text-base' : 'text-sm'}`}>Projetos em destaque</h2>
-          <p className={`text-gray-400 dark:text-gray-500 mt-0.5 ${tvMode ? 'text-xs' : 'text-[11px]'}`}>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Projetos em destaque</h2>
+          <p className="text-gray-400 dark:text-gray-500 mt-0.5 text-[11px]">
             Recentes e prazos próximos
             {urgentCount > 0 && (
               <span className="ml-2 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-semibold px-1.5 py-0.5 rounded-full">
@@ -430,35 +474,27 @@ function RecentCarousel({ projects, isDark, tvMode }) {
             )}
           </p>
         </div>
-        {!tvMode && (
-          <div className="flex gap-1.5">
-            <button onClick={() => scroll(-1)} disabled={!canLeft}
-              className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-              <ChevronLeftIcon className="w-4 h-4" />
-            </button>
-            <button onClick={() => scroll(1)} disabled={!canRight}
-              className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-              <ChevronRightIcon className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <div className="flex gap-1.5">
+          <button onClick={() => scroll(-1)} disabled={!canLeft}
+            className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            <ChevronLeftIcon className="w-4 h-4" />
+          </button>
+          <button onClick={() => scroll(1)} disabled={!canRight}
+            className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            <ChevronRightIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
       <div
         ref={trackRef}
         onScroll={checkScroll}
-        className={`flex gap-4 overflow-x-auto pb-1 scroll-smooth ${tvMode ? 'flex-1 items-stretch' : ''}`}
+        className="flex gap-3 overflow-x-auto pb-1 scroll-smooth"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {cards.length === 0
           ? <p className="text-sm text-gray-400 dark:text-gray-600 py-4">Nenhum projeto em andamento.</p>
           : cards.map((p) => (
-              <CarouselCard
-                key={p.id}
-                p={{ ...p, _tvMode: tvMode }}
-                isDark={isDark}
-                cardW={cardW}
-                tvStretch={tvMode}
-              />
+              <CarouselCard key={p.id} p={{ ...p, _tvMode: false }} isDark={isDark} cardW="w-56" />
             ))
         }
       </div>
