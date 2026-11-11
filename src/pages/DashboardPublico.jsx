@@ -508,7 +508,10 @@ export default function DashboardPublico() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filterEtapa, setFilterEtapa] = useState('todas')
-  const [tvMode, setTvMode] = useState(() => { try { return localStorage.getItem('dash_tv') === '1' } catch { return false } })
+  const [tvMode, setTvMode] = useState(() => {
+    if (new URLSearchParams(window.location.search).get('tv') === '1') return true
+    try { return localStorage.getItem('dash_tv') === '1' } catch { return false }
+  })
   const [clock, setClock] = useState(() => format(new Date(), "HH:mm", { locale: ptBR }))
   const refreshRef = useRef(null)
 
