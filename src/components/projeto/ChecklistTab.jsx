@@ -1339,6 +1339,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   const [users, setUsers] = useState([])
   const [contratoDocUrl, setContratoDocUrl] = useState(null)
   const [contratoDocLoading, setContratoDocLoading] = useState(false)
+  const [docByItemId, setDocByItemId] = useState({})
 
   const done = items.filter((i) => i.concluido).length
   const total = items.length
@@ -1416,6 +1417,23 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
     supabase.from('users').select('id, nome').eq('ativo', true).order('nome')
       .then(({ data }) => setUsers(data || []))
   }, [])
+
+  useEffect(() => {
+    const reqItems = items.filter((i) => i.requer_documento && i.concluido)
+    if (!reqItems.length) { setDocByItemId({}); return }
+    const ids = reqItems.map((i) => i.id)
+    supabase.from('documents').select('checklist_item_id, url_storage, nome_arquivo')
+      .in('checklist_item_id', ids)
+      .order('enviado_em', { ascending: false })
+      .then(({ data }) => {
+        if (!data) return
+        const map = {}
+        for (const d of data) {
+          if (!map[d.checklist_item_id]) map[d.checklist_item_id] = d
+        }
+        setDocByItemId(map)
+      })
+  }, [items])
 
   function handleClick(item) {
     if (item.descricao === 'Orçamentos realizados') {
@@ -1782,6 +1800,20 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                 {item.concluido && hasDados && (
                   <div className="px-4 pb-3">
                     <DadosResumo item={item} users={users} />
+                  </div>
+                )}
+
+                {item.concluido && item.requer_documento && docByItemId[item.id] && (
+                  <div className="px-4 pb-3 ml-9">
+                    <a
+                      href={docByItemId[item.id].url_storage}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                    >
+                      <PaperClipIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                      {docByItemId[item.id].nome_arquivo || 'Visualizar documento'}
+                    </a>
                   </div>
                 )}
 
