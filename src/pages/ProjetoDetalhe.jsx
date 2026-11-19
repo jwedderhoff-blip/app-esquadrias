@@ -224,6 +224,7 @@ export default function ProjetoDetalhe() {
   const [modalBaixa, setModalBaixa] = useState(null)
   const [formBaixa, setFormBaixa] = useState({ data_pagamento: '', forma_recebimento: '' })
   const [savingBaixa, setSavingBaixa] = useState(false)
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [financeiroAberto, setFinanceiroAberto] = useState(() => {
     try { return localStorage.getItem('financeiro_aberto') !== 'false' } catch { return true }
   })
@@ -408,6 +409,7 @@ export default function ProjetoDetalhe() {
     if (error) { toast.error('Erro: ' + error.message); return }
     setComprovanteEditFile(null)
     setEditandoPagamento(null)
+    setConfirmandoExclusao(false)
     fetchPagamentos()
     toast.success('Pagamento atualizado')
   }
@@ -446,6 +448,15 @@ export default function ProjetoDetalhe() {
     setModalParcelamento(false)
     fetchPagamentos()
     toast.success(`${numParcelas} parcela${numParcelas > 1 ? 's' : ''} lançada${numParcelas > 1 ? 's' : ''}`)
+  }
+
+  async function excluirPagamento() {
+    const { error } = await supabase.from('pagamentos').delete().eq('id', editandoPagamento.id)
+    if (error) { toast.error('Erro ao excluir: ' + error.message); return }
+    setEditandoPagamento(null)
+    setComprovanteEditFile(null)
+    fetchPagamentos()
+    toast.success('Lançamento excluído')
   }
 
   async function darBaixa() {
@@ -1086,7 +1097,7 @@ export default function ProjetoDetalhe() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Editar lançamento</h2>
-              <button onClick={() => setEditandoPagamento(null)}><XMarkIcon className="w-5 h-5 text-gray-400" /></button>
+              <button onClick={() => { setEditandoPagamento(null); setConfirmandoExclusao(false) }}><XMarkIcon className="w-5 h-5 text-gray-400" /></button>
             </div>
             <div className="space-y-4">
               <div>
@@ -1150,16 +1161,38 @@ export default function ProjetoDetalhe() {
                 </label>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => { setEditandoPagamento(null); setComprovanteEditFile(null) }}
-                className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                Cancelar
-              </button>
-              <button onClick={salvarEditPagamento} disabled={savingEditPagamento}
-                className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
-                {savingEditPagamento ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
+            {confirmandoExclusao ? (
+              <div className="mt-6 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                <p className="text-xs text-red-700 dark:text-red-300 mb-3 font-medium">Confirmar exclusão deste lançamento?</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setConfirmandoExclusao(false)}
+                    className="flex-1 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                    Não
+                  </button>
+                  <button onClick={excluirPagamento}
+                    className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition">
+                    Sim, excluir
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 mt-6">
+                <div className="flex gap-3">
+                  <button onClick={() => { setEditandoPagamento(null); setComprovanteEditFile(null); setConfirmandoExclusao(false) }}
+                    className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                    Cancelar
+                  </button>
+                  <button onClick={salvarEditPagamento} disabled={savingEditPagamento}
+                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
+                    {savingEditPagamento ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+                <button onClick={() => setConfirmandoExclusao(true)}
+                  className="w-full py-2 text-xs font-medium text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
+                  Excluir lançamento
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
