@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline'
+import { SunIcon, MoonIcon, ComputerDesktopIcon, ChevronLeftIcon, ChevronRightIcon, TvIcon } from '@heroicons/react/24/outline'
 
 const ETAPAS = [
   { key: 'pedido',          label: 'Pedido',              color: '#64748b', bg: '#f1f5f9', text: '#334155', darkBg: '#1e293b', darkText: '#94a3b8' },
@@ -209,14 +209,313 @@ function ProjectCard({ p, isDark }) {
   )
 }
 
+function CarouselCard({ p, isDark, cardW = 'w-56', tvStretch = false }) {
+  const e = ETAPA_MAP[p.etapa_atual] || { label: p.etapa_atual, color: '#94a3b8', bg: '#f8fafc', text: '#475569', darkBg: '#1e293b', darkText: '#94a3b8' }
+  const badgeStyle = isDark
+    ? { backgroundColor: e.darkBg, color: e.darkText }
+    : { backgroundColor: e.bg, color: e.text }
+
+  const stageIdx = ETAPAS.findIndex((et) => et.key === p.etapa_atual)
+  const checklistPartial = p.checklist_total > 0 ? p.checklist_done / p.checklist_total : 0
+  const pct = Math.min(100, Math.round(((stageIdx + checklistPartial) / ETAPAS.length) * 100))
+  const pctColor = pct === 100 ? '#22c55e' : pct >= 60 ? '#3b82f6' : pct >= 30 ? '#f59e0b' : '#94a3b8'
+  const tv = p._tvMode
+
+  const urgBorderColor = p._urgLevel === 2 ? 'border-red-500/60' : p._urgLevel === 1 ? 'border-amber-400/60' : 'border-gray-100 dark:border-gray-700'
+
+  const fmtBRL = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+  const temFinanceiro = p.valor_contrato != null
+  const saldo = p.saldo_pendente ?? 0
+  const quitado = temFinanceiro && saldo < 0.01
+
+  return (
+    <div className={`flex-shrink-0 ${cardW} ${tvStretch ? 'self-stretch' : ''} bg-white dark:bg-gray-800 rounded-2xl border-2 ${urgBorderColor} ${tv ? 'p-5' : 'p-4'} shadow-sm flex flex-col gap-2`}>
+      {/* Urgência */}
+      {p._urgBadge && (
+        <div className={`flex items-center gap-1 font-bold px-2 py-0.5 rounded-full w-fit ${tv ? 'text-xs' : 'text-[11px]'} ${
+          p._urgLevel === 2 ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+        }`}>
+          {p._urgLevel === 2 ? '🔴' : '⚠️'} {p._urgBadge}
+        </div>
+      )}
+
+      {/* Título + cliente */}
+      <div>
+        <p className={`font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-snug ${tv ? 'text-base' : 'text-sm'}`}>{p.titulo}</p>
+        <p className={`text-gray-400 dark:text-gray-500 truncate mt-0.5 ${tv ? 'text-sm' : 'text-xs'}`}>{p.cliente}</p>
+      </div>
+
+      <span className={`px-2 py-0.5 rounded-full font-semibold w-fit ${tv ? 'text-xs' : 'text-[11px]'}`} style={badgeStyle}>{e.label}</span>
+
+      {/* Progresso */}
+      <div>
+        <div className={`flex justify-between mb-0.5 ${tv ? 'text-xs' : 'text-[10px]'}`}>
+          <span className="text-gray-400 dark:text-gray-500">Progresso</span>
+          <span className="font-bold" style={{ color: pctColor }}>{pct}%</span>
+        </div>
+        <div className={`${tv ? 'h-2' : 'h-1.5'} bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden`}>
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pctColor }} />
+        </div>
+      </div>
+
+      {/* Financeiro (TV mode) */}
+      {tv && temFinanceiro && (
+        <div className="mt-1 pt-2 border-t border-gray-700/50">
+          <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-0.5">A receber</p>
+          {quitado
+            ? <p className="text-sm font-bold text-green-400">✓ Quitado</p>
+            : <p className="text-lg font-extrabold text-amber-400 leading-none">{fmtBRL(saldo)}</p>
+          }
+          {!quitado && <p className="text-[11px] text-gray-600 mt-0.5">{fmtBRL(Number(p.valor_contrato))} total</p>}
+        </div>
+      )}
+
+      {/* Última alteração (modo normal) */}
+      {!tv && p.ultima_alteracao && (
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate mt-auto">
+          {getAcaoIcon(p.ultima_alteracao.acao)} {format(new Date(p.ultima_alteracao.em), "dd/MM HH:mm", { locale: ptBR })}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function buildCarouselCards(projects) {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  return projects
+    .filter((p) => p.etapa_atual !== 'encerrado')
+    .map((p) => {
+      let _urgLevel = 0
+      let _urgBadge = null
+      if (p.prazo_pedido) {
+        const deadline = new Date(p.prazo_pedido + 'T00:00:00')
+        const dias = Math.round((deadline - today) / (1000 * 60 * 60 * 24))
+        if (dias < 0)        { _urgLevel = 2; _urgBadge = `${Math.abs(dias)}d em atraso` }
+        else if (dias === 0) { _urgLevel = 2; _urgBadge = 'Vence hoje' }
+        else if (dias <= 7)  { _urgLevel = 1; _urgBadge = `${dias}d p/ prazo` }
+      }
+      return { ...p, _urgLevel, _urgBadge }
+    })
+    .sort((a, b) => {
+      if (b._urgLevel !== a._urgLevel) return b._urgLevel - a._urgLevel
+      return new Date(b.atualizado_em || b.criado_em) - new Date(a.atualizado_em || a.criado_em)
+    })
+    .slice(0, 12)
+}
+
+function FinanceiroPainel({ financial, isDark }) {
+  const { totalContratos, totalRecebido, totalAReceber, pctRecebido, topPendencias } = financial
+  const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+
+  const barColor = pctRecebido >= 80 ? '#22c55e' : pctRecebido >= 50 ? '#3b82f6' : '#f59e0b'
+
+  return (
+    <div className="bg-gray-900 dark:bg-gray-950 rounded-2xl border border-gray-700 p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-gray-300 mb-5">💰 Resumo Financeiro — Carteira Ativa</h2>
+
+      {/* 3 métricas principais */}
+      <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="bg-gray-800 rounded-xl p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Contratos ativos</p>
+          <p className="text-2xl font-extrabold text-gray-100 leading-none">{fmtBRL(totalContratos)}</p>
+        </div>
+        <div className="bg-green-900/40 border border-green-700/40 rounded-xl p-4">
+          <p className="text-xs text-green-500 uppercase tracking-wide mb-1">Recebido</p>
+          <p className="text-2xl font-extrabold text-green-400 leading-none">{fmtBRL(totalRecebido)}</p>
+        </div>
+        <div className={`rounded-xl p-4 border ${totalAReceber > 0 ? 'bg-amber-900/30 border-amber-700/40' : 'bg-gray-800 border-gray-700'}`}>
+          <p className={`text-xs uppercase tracking-wide mb-1 ${totalAReceber > 0 ? 'text-amber-400' : 'text-gray-500'}`}>A receber</p>
+          <p className={`text-2xl font-extrabold leading-none ${totalAReceber > 0 ? 'text-amber-400' : 'text-gray-400'}`}>{fmtBRL(totalAReceber)}</p>
+        </div>
+      </div>
+
+      {/* Barra de progresso */}
+      <div className="mb-5">
+        <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+          <span>Recebimento da carteira</span>
+          <span className="font-bold" style={{ color: barColor }}>{pctRecebido}% recebido</span>
+        </div>
+        <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-1000"
+            style={{ width: `${pctRecebido}%`, backgroundColor: barColor }}
+          />
+        </div>
+      </div>
+
+      {/* Top pendências */}
+      {topPendencias.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Maiores pendências</p>
+          <div className="space-y-2">
+            {topPendencias.map((p) => {
+              const e = ETAPA_MAP[p.etapa_atual]
+              return (
+                <div key={p.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-gray-800 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-200 truncate">{p.titulo || p.cliente}</p>
+                    {p.titulo && <p className="text-xs text-gray-500 truncate">{p.cliente}</p>}
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                      style={{ backgroundColor: e?.darkBg ?? '#1e293b', color: e?.darkText ?? '#94a3b8' }}>
+                      {e?.label ?? p.etapa_atual}
+                    </span>
+                    <span className="text-sm font-bold text-amber-400">{fmtBRL(p.saldo_pendente)}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {topPendencias.length === 0 && (
+        <p className="text-center text-green-400 font-semibold text-sm py-2">✓ Carteira totalmente quitada</p>
+      )}
+    </div>
+  )
+}
+
+function RecentCarousel({ projects, isDark, tvMode }) {
+  const trackRef = useRef(null)
+  const [canLeft, setCanLeft] = useState(false)
+  const [canRight, setCanRight] = useState(true)
+
+  const cards = buildCarouselCards(projects)
+  const urgentCount = cards.filter((c) => c._urgLevel > 0).length
+
+  function checkScroll() {
+    const el = trackRef.current
+    if (!el) return
+    setCanLeft(el.scrollLeft > 8)
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8)
+  }
+
+  function scroll(dir) {
+    const el = trackRef.current
+    if (!el) return
+    el.scrollBy({ left: dir * 240, behavior: 'smooth' })
+  }
+
+  useEffect(() => { checkScroll() }, [cards.length])
+
+  // TV mode: animação CSS contínua — sem setInterval
+  if (tvMode) {
+    const doubled = [...cards, ...cards]
+    // velocidade: ~100px/s — cada card tem 384px + 16px gap = 400px
+    const duration = Math.max(cards.length * 4, 12)
+
+    return (
+      <div className="bg-gray-900 rounded-2xl border border-gray-700 p-5 h-full flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-gray-200">Projetos em destaque</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Recentes e prazos próximos
+              {urgentCount > 0 && (
+                <span className="ml-2 bg-amber-900/40 text-amber-400 font-semibold px-1.5 py-0.5 rounded-full">
+                  {urgentCount} atenção
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes tv-scroll {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          .tv-scroll-track {
+            display: flex;
+            align-items: stretch;
+            width: max-content;
+            gap: 16px;
+            animation: tv-scroll ${duration}s linear infinite;
+          }
+          .tv-scroll-track:hover { animation-play-state: paused; }
+        `}</style>
+
+        <div className="flex-1 overflow-hidden">
+          {cards.length === 0
+            ? <p className="text-sm text-gray-600 py-4">Nenhum projeto em andamento.</p>
+            : (
+              <div className="tv-scroll-track h-full">
+                {doubled.map((p, i) => (
+                  <CarouselCard
+                    key={`${p.id}-${i}`}
+                    p={{ ...p, _tvMode: true }}
+                    isDark={isDark}
+                    cardW="w-96"
+                    tvStretch={true}
+                  />
+                ))}
+              </div>
+            )
+          }
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Projetos em destaque</h2>
+          <p className="text-gray-400 dark:text-gray-500 mt-0.5 text-[11px]">
+            Recentes e prazos próximos
+            {urgentCount > 0 && (
+              <span className="ml-2 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-semibold px-1.5 py-0.5 rounded-full">
+                {urgentCount} atenção
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          <button onClick={() => scroll(-1)} disabled={!canLeft}
+            className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            <ChevronLeftIcon className="w-4 h-4" />
+          </button>
+          <button onClick={() => scroll(1)} disabled={!canRight}
+            className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            <ChevronRightIcon className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+      <div
+        ref={trackRef}
+        onScroll={checkScroll}
+        className="flex gap-3 overflow-x-auto pb-1 scroll-smooth"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {cards.length === 0
+          ? <p className="text-sm text-gray-400 dark:text-gray-600 py-4">Nenhum projeto em andamento.</p>
+          : cards.map((p) => (
+              <CarouselCard key={p.id} p={{ ...p, _tvMode: false }} isDark={isDark} cardW="w-56" />
+            ))
+        }
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPublico() {
   const { companyId } = useParams()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filterEtapa, setFilterEtapa] = useState('todas')
+  const [tvMode, setTvMode] = useState(() => {
+    if (new URLSearchParams(window.location.search).get('tv') === '1') return true
+    try { return localStorage.getItem('dash_tv') === '1' } catch { return false }
+  })
+  const [clock, setClock] = useState(() => format(new Date(), "HH:mm", { locale: ptBR }))
+  const refreshRef = useRef(null)
 
-  // Tema — controla document.documentElement para que dark: do Tailwind funcione corretamente
+  // Tema
   const [theme, setThemeState] = useState(() => {
     try { return localStorage.getItem('dash_theme') ?? 'system' } catch { return 'system' }
   })
@@ -224,26 +523,18 @@ export default function DashboardPublico() {
 
   useEffect(() => {
     const html = document.documentElement
-    // guarda o estado original do app para restaurar ao sair
     const appWasDark = html.classList.contains('dark')
-
-    function applyDark(val) {
-      html.classList.toggle('dark', val)
-      setIsDark(val)
-    }
-
+    function applyDark(val) { html.classList.toggle('dark', val); setIsDark(val) }
+    // TV mode forces dark
+    if (tvMode) { applyDark(true); return () => html.classList.toggle('dark', appWasDark) }
     if (theme === 'dark') { applyDark(true); return () => html.classList.toggle('dark', appWasDark) }
     if (theme === 'light') { applyDark(false); return () => html.classList.toggle('dark', appWasDark) }
-
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     applyDark(mq.matches)
     const handler = (e) => applyDark(e.matches)
     mq.addEventListener('change', handler)
-    return () => {
-      mq.removeEventListener('change', handler)
-      html.classList.toggle('dark', appWasDark)
-    }
-  }, [theme])
+    return () => { mq.removeEventListener('change', handler); html.classList.toggle('dark', appWasDark) }
+  }, [theme, tvMode])
 
   function cycleTheme() {
     const next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length]
@@ -251,13 +542,47 @@ export default function DashboardPublico() {
     try { localStorage.setItem('dash_theme', next) } catch {}
   }
 
+  function toggleTv() {
+    const next = !tvMode
+    setTvMode(next)
+    try { localStorage.setItem('dash_tv', next ? '1' : '0') } catch {}
+  }
+
+  // Clock tick every minute
   useEffect(() => {
+    const id = setInterval(() => setClock(format(new Date(), "HH:mm", { locale: ptBR })), 60000)
+    return () => clearInterval(id)
+  }, [])
+
+  const fetchData = useCallback(() => {
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-publico?company_id=${companyId}`
     fetch(url, { headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY } })
       .then((r) => r.json())
       .then((d) => { if (d.error) setError(d.error); else setData(d); setLoading(false) })
       .catch(() => { setError('Erro ao carregar dados'); setLoading(false) })
   }, [companyId])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  // TV mode: auto-refresh every 3 minutes
+  useEffect(() => {
+    if (!tvMode) { clearInterval(refreshRef.current); return }
+    refreshRef.current = setInterval(fetchData, 3 * 60 * 1000)
+    return () => clearInterval(refreshRef.current)
+  }, [tvMode, fetchData])
+
+  // TV mode: auto-cycle etapa filter every 12s (must be before early returns)
+  useEffect(() => {
+    if (!tvMode || !data) return
+    const etapaKeys = ['todas', ...ETAPAS.filter((e) => data.projects.some((p) => p.etapa_atual === e.key)).map((e) => e.key)]
+    const id = setInterval(() => {
+      setFilterEtapa((cur) => {
+        const idx = etapaKeys.indexOf(cur)
+        return etapaKeys[(idx + 1) % etapaKeys.length]
+      })
+    }, 12000)
+    return () => clearInterval(id)
+  }, [tvMode, data])
 
   const ThemeIcon = THEME_ICON[theme] ?? ComputerDesktopIcon
 
@@ -273,7 +598,7 @@ export default function DashboardPublico() {
     </div>
   )
 
-  const { company, projects, generated_at } = data
+  const { company, projects, financial, generated_at } = data
   const total = projects.length
   const encerrados = projects.filter((p) => p.etapa_atual === 'encerrado').length
   const emAndamento = total - encerrados
@@ -307,31 +632,53 @@ export default function DashboardPublico() {
 
         {/* Header */}
         <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className={`${tvMode ? 'px-6 py-4' : 'max-w-5xl mx-auto px-4 py-4'} flex items-center justify-between gap-4`}>
             <div className="flex items-center gap-4">
               {company.logo_url
-                ? <img src={company.logo_url} alt={company.nome} className="h-10 w-auto object-contain rounded" />
-                : <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-bold text-lg">{company.nome[0]}</span>
+                ? <img src={company.logo_url} alt={company.nome} className={`${tvMode ? 'h-14' : 'h-10'} w-auto object-contain rounded`} />
+                : <div className={`${tvMode ? 'w-14 h-14' : 'w-10 h-10'} rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0`}>
+                    <span className={`text-white font-bold ${tvMode ? 'text-2xl' : 'text-lg'}`}>{company.nome[0]}</span>
                   </div>
               }
               <div>
-                <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">{company.nome}</h1>
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  Atualizado em {format(new Date(generated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                </p>
+                <h1 className={`font-bold text-gray-900 dark:text-gray-100 ${tvMode ? 'text-2xl' : 'text-lg'}`}>{company.nome}</h1>
+                {tvMode
+                  ? <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{format(new Date(generated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                  : <p className="text-xs text-gray-400 dark:text-gray-500">Atualizado em {format(new Date(generated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                }
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Botão de tema */}
+              {/* Relógio (TV mode) */}
+              {tvMode && (
+                <div className="text-3xl font-bold font-mono text-gray-700 dark:text-gray-200 tabular-nums">{clock}</div>
+              )}
+
+              {/* Botão TV */}
               <button
-                onClick={cycleTheme}
-                title={`Tema: ${THEME_LABEL[theme]}`}
-                className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                onClick={toggleTv}
+                title={tvMode ? 'Sair do modo TV' : 'Modo TV (kiosk)'}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  tvMode
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
               >
-                <ThemeIcon className="w-5 h-5" />
+                <TvIcon className="w-5 h-5" />
+                <span className="hidden sm:inline">{tvMode ? 'Sair TV' : 'Modo TV'}</span>
               </button>
+
+              {/* Botão de tema (oculto no modo TV) */}
+              {!tvMode && (
+                <button
+                  onClick={cycleTheme}
+                  title={`Tema: ${THEME_LABEL[theme]}`}
+                  className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <ThemeIcon className="w-5 h-5" />
+                </button>
+              )}
 
               {/* Crédito */}
               <div className="hidden sm:flex flex-col items-end text-right">
@@ -358,79 +705,89 @@ export default function DashboardPublico() {
         {/* Ticker */}
         <Ticker items={tickerItems} />
 
-        <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-
-          {/* 4 cards principais */}
-          {(() => {
-            const qtdContrato   = projects.filter((p) => p.etapa_atual === 'contrato').length
-            const qtdCompra     = projects.filter((p) => p.etapa_atual === 'compra_material' || p.compra_material_iniciada).length
-            const qtdFabricacao = projects.filter((p) => p.etapa_atual === 'fabricacao').length
-            const qtdEntrega    = projects.filter((p) => p.etapa_atual === 'pronto_entrega').length
-            const cards = [
-              { label: 'Contrato Assinado',    value: qtdContrato,   color: 'from-violet-500 to-violet-600',   highlight: false },
-              { label: 'Compra de Material',   value: qtdCompra,     color: 'from-amber-500 to-orange-500',    highlight: false },
-              { label: 'Em Fabricação',        value: qtdFabricacao, color: 'from-blue-500 to-blue-700',       highlight: true  },
-              { label: 'Pronto para Entrega',  value: qtdEntrega,    color: 'from-emerald-500 to-green-600',   highlight: false },
-            ]
-            return (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {cards.map(({ label, value, color, highlight }) => (
-                  <div
-                    key={label}
-                    className={`bg-gradient-to-br ${color} rounded-2xl p-5 shadow-sm text-white flex flex-col justify-between ${highlight ? 'ring-4 ring-blue-300 dark:ring-blue-400 scale-[1.03] shadow-lg' : ''}`}
-                    style={highlight ? { transition: 'transform 0.2s' } : {}}
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-wide opacity-80 leading-snug">{label}</p>
-                    <p className="text-5xl font-extrabold mt-3 leading-none">{value}</p>
-                    <div className="mt-4 h-1.5 bg-white/30 rounded-full overflow-hidden">
-                      <div className="h-full bg-white rounded-full" style={{ width: total > 0 ? `${Math.round((value / total) * 100)}%` : '0%' }} />
-                    </div>
-                    <p className="text-[11px] opacity-60 mt-1">{total > 0 ? Math.round((value / total) * 100) : 0}% do total</p>
+        {tvMode ? (
+          /* ── TV MODE: tudo em uma tela, sem scroll ── */
+          <div className="px-6 py-4 flex flex-col gap-4 h-[calc(100vh-120px)]">
+            {/* KPIs compactos (linha única) */}
+            {financial && (() => {
+              const fmtBRL = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+              const barColor = financial.pctRecebido >= 80 ? '#22c55e' : financial.pctRecebido >= 50 ? '#3b82f6' : '#f59e0b'
+              return (
+                <div className="flex items-center gap-4 bg-gray-900 rounded-2xl px-5 py-3 border border-gray-700">
+                  <div className="flex-shrink-0">
+                    <p className="text-[11px] text-gray-500 uppercase tracking-wide">Carteira ativa</p>
+                    <p className="text-lg font-extrabold text-gray-100">{fmtBRL(financial.totalContratos)}</p>
                   </div>
-                ))}
-              </div>
-            )
-          })()}
-
-          {/* Pipeline */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Pipeline de projetos por etapa</h2>
-            <StagePipeline projects={projects} />
-          </div>
-
-          {/* Lista filtrada */}
-          <div>
-            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Projetos ({filtered.length})</h2>
-              <div className="flex gap-1.5 flex-wrap">
-                {filterOptions.map((o) => (
-                  <button
-                    key={o.key}
-                    onClick={() => setFilterEtapa(o.key)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      filterEtapa === o.key
-                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                        : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {filtered.length === 0
-              ? <p className="text-center text-gray-400 dark:text-gray-600 text-sm py-8">Nenhum projeto nesta etapa.</p>
-              : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filtered.map((p) => <ProjectCard key={p.id} p={p} isDark={isDark} />)}
+                  <div className="w-px h-10 bg-gray-700 flex-shrink-0" />
+                  <div className="flex-shrink-0">
+                    <p className="text-[11px] text-green-500 uppercase tracking-wide">Recebido</p>
+                    <p className="text-lg font-extrabold text-green-400">{fmtBRL(financial.totalRecebido)}</p>
+                  </div>
+                  <div className="w-px h-10 bg-gray-700 flex-shrink-0" />
+                  <div className="flex-shrink-0">
+                    <p className="text-[11px] text-amber-400 uppercase tracking-wide">A receber</p>
+                    <p className="text-lg font-extrabold text-amber-400">{fmtBRL(financial.totalAReceber)}</p>
+                  </div>
+                  <div className="flex-1 ml-2">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Recebimento</span>
+                      <span className="font-bold" style={{ color: barColor }}>{financial.pctRecebido}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${financial.pctRecebido}%`, backgroundColor: barColor }} />
+                    </div>
+                  </div>
+                  <div className="w-px h-10 bg-gray-700 flex-shrink-0" />
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-[11px] text-gray-500 uppercase tracking-wide">Projetos ativos</p>
+                    <p className="text-lg font-extrabold text-gray-100">{projects.filter(p => p.etapa_atual !== 'encerrado').length}</p>
+                  </div>
                 </div>
               )
-            }
-          </div>
+            })()}
 
-          <p className="text-center text-xs text-gray-300 dark:text-gray-700 pb-4">App Esquadrias</p>
-        </div>
+            {/* Carrossel — ocupa todo o espaço restante */}
+            <div className="flex-1 min-h-0">
+              <RecentCarousel projects={projects} isDark={isDark} tvMode={tvMode} />
+            </div>
+          </div>
+        ) : (
+          /* ── MODO NORMAL ── */
+          <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+            <RecentCarousel projects={projects} isDark={isDark} tvMode={false} />
+
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Pipeline de projetos por etapa</h2>
+              <StagePipeline projects={projects} />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Projetos ({filtered.length})</h2>
+                <div className="flex gap-1.5 flex-wrap">
+                  {filterOptions.map((o) => (
+                    <button key={o.key} onClick={() => setFilterEtapa(o.key)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        filterEtapa === o.key
+                          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                          : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {filtered.length === 0
+                ? <p className="text-center text-gray-400 dark:text-gray-600 text-sm py-8">Nenhum projeto nesta etapa.</p>
+                : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map((p) => <ProjectCard key={p.id} p={p} isDark={isDark} />)}
+                  </div>
+              }
+            </div>
+
+            <p className="text-center text-xs text-gray-300 dark:text-gray-700 pb-4">App Esquadrias</p>
+          </div>
+        )}
       </div>
   )
 }
