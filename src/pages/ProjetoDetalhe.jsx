@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, EllipsisVerticalIcon, PencilSquareIcon, TrashIcon, XMarkIcon, PlusIcon, BanknotesIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, PaperClipIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, EllipsisVerticalIcon, PencilSquareIcon, TrashIcon, XMarkIcon, PlusIcon, BanknotesIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, PaperClipIcon, ClockIcon, TableCellsIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ETAPAS, ETAPA_INDEX } from '../lib/constants'
@@ -218,6 +218,12 @@ export default function ProjetoDetalhe() {
   const [formEditPagamento, setFormEditPagamento] = useState({ descricao: '', valor: '', data_pagamento: '', forma_recebimento: '', destino: '' })
   const [comprovanteEditFile, setComprovanteEditFile] = useState(null)
   const [savingEditPagamento, setSavingEditPagamento] = useState(false)
+  const [modalParcelamento, setModalParcelamento] = useState(false)
+  const [formParcelamento, setFormParcelamento] = useState({ descricao: '', valorParcela: '', numParcelas: '', primeiroVencimento: '', forma_recebimento: '' })
+  const [savingParcelamento, setSavingParcelamento] = useState(false)
+  const [modalBaixa, setModalBaixa] = useState(null)
+  const [formBaixa, setFormBaixa] = useState({ data_pagamento: '', forma_recebimento: '' })
+  const [savingBaixa, setSavingBaixa] = useState(false)
   const [financeiroAberto, setFinanceiroAberto] = useState(() => {
     try { return localStorage.getItem('financeiro_aberto') !== 'false' } catch { return true }
   })
@@ -292,6 +298,8 @@ export default function ProjetoDetalhe() {
       .from('pagamentos')
       .select('*')
       .eq('project_id', id)
+      .order('pago', { ascending: true })
+      .order('data_vencimento', { ascending: true, nullsFirst: false })
       .order('data_pagamento', { ascending: true, nullsFirst: false })
     setPagamentos(data || [])
   }
@@ -403,6 +411,58 @@ export default function ProjetoDetalhe() {
     fetchPagamentos()
     toast.success('Pagamento atualizado')
   }
+
+  async function lancarParcelamento() {
+    const valorParcela = parseFloat(formParcelamento.valorParcela.replace(',', '.'))
+    const numParcelas = parseInt(formParcelamento.numParcelas, 10)
+    if (isNaN(valorParcela) || valorParcela <= 0) { toast.error('Valor inválido'); return }
+    if (isNaN(numParcelas) || numParcelas < 1 || numParcelas > 60) { toast.error('Número de parcelas inválido (1–60)'); return }
+    if (!formParcelamento.primeiroVencimento) { toast.error('Informe a data do 1º vencimento'); return }
+    if (!formParcelamento.descricao.trim()) { toast.error('Informe uma descrição base'); return }
+    setSavingParcelamento(true)
+    const rows = []
+    const [ano, mes, dia] = formParcelamento.primeiroVencimento.split('-').map(Number)
+    for (let i = 0; i < numParcelas; i++) {
+      const d = new Date(ano, mes - 1 + i, dia)
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      rows.push({
+        project_id: id,
+        company_id: project.company_id,
+        descricao: `${formParcelamento.descricao.trim()} ${i + 1}/${numParcelas}`,
+        valor: valorParcela,
+        data_vencimento: `${yyyy}-${mm}-${dd}`,
+        data_pagamento: null,
+        pago: false,
+        forma_recebimento: formParcelamento.forma_recebimento || null,
+        criado_por: session.user.id,
+      })
+    }
+    const { error } = await supabase.from('pagamentos').insert(rows)
+    setSavingParcelamento(false)
+    if (error) { toast.error('Erro: ' + error.message); return }
+    setFormParcelamento({ descricao: '', valorParcela: '', numParcelas: '', primeiroVencimento: '', forma_recebimento: '' })
+    setModalParcelamento(false)
+    fetchPagamentos()
+    toast.success(`${numParcelas} parcela${numParcelas > 1 ? 's' : ''} lançada${numParcelas > 1 ? 's' : ''}`)
+  }
+
+  async function darBaixa() {
+    if (!formBaixa.data_pagamento) { toast.error('Informe a data do recebimento'); return }
+    setSavingBaixa(true)
+    const { error } = await supabase.from('pagamentos').update({
+      pago: true,
+      data_pagamento: formBaixa.data_pagamento,
+      forma_recebimento: formBaixa.forma_recebimento || modalBaixa.forma_recebimento || null,
+    }).eq('id', modalBaixa.id)
+    setSavingBaixa(false)
+    if (error) { toast.error('Erro: ' + error.message); return }
+    setModalBaixa(null)
+    fetchPagamentos()
+    toast.success('Baixa registrada')
+  }
+
 
   async function fetchChecklist() {
     const etapa = selectedEtapa ?? project?.etapa_atual
@@ -552,7 +612,8 @@ export default function ProjetoDetalhe() {
   const allDone = checklistItems.length > 0 && checklistItems.every((i) => i.concluido)
 
   const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-  const totalRecebido = pagamentos.reduce((s, p) => s + Number(p.valor), 0)
+  const totalRecebido = pagamentos.filter((p) => p.pago).reduce((s, p) => s + Number(p.valor), 0)
+  const totalPendente = pagamentos.filter((p) => !p.pago).reduce((s, p) => s + Number(p.valor), 0)
   const saldo = (project.valor_contrato ?? 0) - totalRecebido
   const temContrato = project.valor_contrato != null
 
@@ -747,9 +808,6 @@ export default function ProjetoDetalhe() {
 
       {/* Card financeiro */}
       {(() => {
-        const totalRecebido = pagamentos.reduce((s, p) => s + Number(p.valor), 0)
-        const saldo = (project.valor_contrato ?? 0) - totalRecebido
-        const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
         return (
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 mb-6">
             {/* Cabeçalho colapsável */}
@@ -770,14 +828,24 @@ export default function ProjetoDetalhe() {
               </div>
               <div className="flex items-center gap-3">
                 {canEdit && financeiroAberto && (
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setModalPagamento(true) }}
-                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    <PlusIcon className="w-3.5 h-3.5" />
-                    Registrar pagamento
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setModalParcelamento(true) }}
+                      className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+                    >
+                      <TableCellsIcon className="w-3.5 h-3.5" />
+                      Parcelamento
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setModalPagamento(true) }}
+                      className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      <PlusIcon className="w-3.5 h-3.5" />
+                      Lançamento
+                    </button>
+                  </div>
                 )}
                 {financeiroAberto
                   ? <ChevronUpIcon className="w-4 h-4 text-gray-400" />
@@ -823,69 +891,93 @@ export default function ProjetoDetalhe() {
             {/* Lista de pagamentos */}
             {pagamentos.length > 0 && (
               <div className="space-y-1.5 mb-3">
-                {pagamentos.map((pag) => (
-                  <div key={pag.id} className="py-2 px-3 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800/30">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <CheckCircleIcon className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                        <span className="text-xs text-gray-700 dark:text-gray-300 truncate">{pag.descricao}</span>
-                        {pag.data_pagamento && (
-                          <span className="text-[11px] text-gray-400 flex-shrink-0">
-                            {new Date(pag.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR')}
-                          </span>
-                        )}
+                {pagamentos.map((pag) => {
+                  const isPago = pag.pago
+                  const dataLabel = isPago
+                    ? pag.data_pagamento ? new Date(pag.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR') : null
+                    : pag.data_vencimento ? 'vence ' + new Date(pag.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : null
+                  return (
+                    <div key={pag.id} className={`py-2 px-3 rounded-lg border ${isPago ? 'bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-800/30' : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30'}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {isPago
+                            ? <CheckCircleIcon className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                            : <ClockIcon className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                          }
+                          <span className="text-xs text-gray-700 dark:text-gray-300 truncate">{pag.descricao}</span>
+                          {dataLabel && (
+                            <span className="text-[11px] text-gray-400 flex-shrink-0">{dataLabel}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className={`text-xs font-semibold ${isPago ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>{fmtBRL(Number(pag.valor))}</span>
+                          {canEdit && !isPago && (
+                            <button
+                              onClick={() => { setModalBaixa(pag); setFormBaixa({ data_pagamento: new Date().toISOString().split('T')[0], forma_recebimento: pag.forma_recebimento || '' }) }}
+                              title="Dar baixa"
+                              className="px-1.5 py-0.5 text-[11px] font-medium rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors whitespace-nowrap"
+                            >
+                              Dar baixa
+                            </button>
+                          )}
+                          {canEdit && (
+                            <button onClick={() => abrirEditarPagamento(pag)} title="Editar lançamento"
+                              className="p-0.5 text-gray-400 hover:text-blue-500 transition-colors">
+                              <PencilSquareIcon className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs font-semibold text-green-700 dark:text-green-400">{fmtBRL(Number(pag.valor))}</span>
-                        {canEdit && (
-                          <button onClick={() => abrirEditarPagamento(pag)} title="Editar lançamento"
-                            className="p-0.5 text-gray-400 hover:text-blue-500 transition-colors">
-                            <PencilSquareIcon className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                      {(pag.forma_recebimento || pag.destino || pag.comprovante_url) && (
+                        <div className="flex flex-wrap gap-3 mt-1 ml-5">
+                          {pag.forma_recebimento && (
+                            <span className="text-[11px] text-gray-400 capitalize">{pag.forma_recebimento.replace(/_/g, ' ')}</span>
+                          )}
+                          {pag.forma_recebimento && pag.destino && <span className="text-[11px] text-gray-300 dark:text-gray-600">·</span>}
+                          {pag.destino && (
+                            <span className="text-[11px] text-gray-400">{pag.destino}</span>
+                          )}
+                          {pag.comprovante_url && (
+                            <>
+                              {(pag.forma_recebimento || pag.destino) && <span className="text-[11px] text-gray-300 dark:text-gray-600">·</span>}
+                              <a href={pag.comprovante_url} target="_blank" rel="noopener noreferrer"
+                                className="text-[11px] text-blue-500 hover:underline flex items-center gap-0.5">
+                                <PaperClipIcon className="w-3 h-3" />
+                                comprovante
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {(pag.forma_recebimento || pag.destino || pag.comprovante_url) && (
-                      <div className="flex flex-wrap gap-3 mt-1 ml-5">
-                        {pag.forma_recebimento && (
-                          <span className="text-[11px] text-gray-400 capitalize">{pag.forma_recebimento.replace(/_/g, ' ')}</span>
-                        )}
-                        {pag.forma_recebimento && pag.destino && <span className="text-[11px] text-gray-300 dark:text-gray-600">·</span>}
-                        {pag.destino && (
-                          <span className="text-[11px] text-gray-400">{pag.destino}</span>
-                        )}
-                        {pag.comprovante_url && (
-                          <>
-                            {(pag.forma_recebimento || pag.destino) && <span className="text-[11px] text-gray-300 dark:text-gray-600">·</span>}
-                            <a href={pag.comprovante_url} target="_blank" rel="noopener noreferrer"
-                              className="text-[11px] text-blue-500 hover:underline flex items-center gap-0.5">
-                              <PaperClipIcon className="w-3 h-3" />
-                              comprovante
-                            </a>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 
             {/* Totais */}
-            {project.valor_contrato != null && (
-              <div className="border-t border-gray-100 dark:border-gray-700 pt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {(project.valor_contrato != null || pagamentos.length > 0) && (
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="text-center">
                   <p className="text-[11px] text-gray-400 mb-0.5">Recebido</p>
                   <p className="text-sm font-bold text-green-600 dark:text-green-400">{fmtBRL(totalRecebido)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[11px] text-gray-400 mb-0.5">Pendente</p>
-                  <p className={`text-sm font-bold ${saldo > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>{fmtBRL(Math.max(0, saldo))}</p>
+                  <p className="text-[11px] text-gray-400 mb-0.5">Lançado pendente</p>
+                  <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{fmtBRL(totalPendente)}</p>
                 </div>
-                <div className="text-center col-span-2 sm:col-span-1">
-                  <p className="text-[11px] text-gray-400 mb-0.5">Total contrato</p>
-                  <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{fmtBRL(Number(project.valor_contrato))}</p>
-                </div>
+                {project.valor_contrato != null && (
+                  <>
+                    <div className="text-center">
+                      <p className="text-[11px] text-gray-400 mb-0.5">A receber</p>
+                      <p className={`text-sm font-bold ${saldo > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'}`}>{fmtBRL(Math.max(0, saldo))}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[11px] text-gray-400 mb-0.5">Total contrato</p>
+                      <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{fmtBRL(Number(project.valor_contrato))}</p>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1066,6 +1158,125 @@ export default function ProjetoDetalhe() {
               <button onClick={salvarEditPagamento} disabled={savingEditPagamento}
                 className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
                 {savingEditPagamento ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal parcelamento */}
+      {modalParcelamento && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Lançar parcelamento</h2>
+              <button onClick={() => setModalParcelamento(false)}><XMarkIcon className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Descrição base</label>
+                <input type="text" value={formParcelamento.descricao}
+                  onChange={(e) => setFormParcelamento((f) => ({ ...f, descricao: e.target.value }))}
+                  placeholder="Ex: Parcela, Boleto, Mensalidade..."
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Valor por parcela (R$)</label>
+                  <input type="text" value={formParcelamento.valorParcela}
+                    onChange={(e) => setFormParcelamento((f) => ({ ...f, valorParcela: e.target.value }))}
+                    placeholder="0,00"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nº de parcelas</label>
+                  <input type="number" min="1" max="60" value={formParcelamento.numParcelas}
+                    onChange={(e) => setFormParcelamento((f) => ({ ...f, numParcelas: e.target.value }))}
+                    placeholder="10"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                </div>
+              </div>
+              {formParcelamento.valorParcela && formParcelamento.numParcelas && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+                  Total: {fmtBRL(parseFloat(formParcelamento.valorParcela.replace(',', '.') || 0) * parseInt(formParcelamento.numParcelas || 0))}
+                </p>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">1º vencimento</label>
+                <input type="date" value={formParcelamento.primeiroVencimento}
+                  onChange={(e) => setFormParcelamento((f) => ({ ...f, primeiroVencimento: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Forma de recebimento <span className="font-normal text-gray-400">(opcional)</span></label>
+                <select value={formParcelamento.forma_recebimento}
+                  onChange={(e) => setFormParcelamento((f) => ({ ...f, forma_recebimento: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                  <option value="">Selecione...</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="pix">PIX</option>
+                  <option value="transferencia">Transferência bancária</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="cartao_credito">Cartão de crédito</option>
+                  <option value="cartao_debito">Cartão de débito</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setModalParcelamento(false)}
+                className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                Cancelar
+              </button>
+              <button onClick={lancarParcelamento} disabled={savingParcelamento}
+                className="flex-1 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-60 transition">
+                {savingParcelamento ? 'Lançando...' : 'Lançar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal dar baixa */}
+      {modalBaixa && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Dar baixa</h2>
+              <button onClick={() => setModalBaixa(null)}><XMarkIcon className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 truncate">{modalBaixa.descricao} — {fmtBRL(Number(modalBaixa.valor))}</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Data do recebimento</label>
+                <input type="date" value={formBaixa.data_pagamento}
+                  onChange={(e) => setFormBaixa((f) => ({ ...f, data_pagamento: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Forma de recebimento</label>
+                <select value={formBaixa.forma_recebimento}
+                  onChange={(e) => setFormBaixa((f) => ({ ...f, forma_recebimento: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <option value="">Selecione...</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="pix">PIX</option>
+                  <option value="transferencia">Transferência bancária</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="cartao_credito">Cartão de crédito</option>
+                  <option value="cartao_debito">Cartão de débito</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setModalBaixa(null)}
+                className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                Cancelar
+              </button>
+              <button onClick={darBaixa} disabled={savingBaixa}
+                className="flex-1 py-2.5 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-60 transition">
+                {savingBaixa ? 'Salvando...' : 'Confirmar recebimento'}
               </button>
             </div>
           </div>
