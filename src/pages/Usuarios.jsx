@@ -30,48 +30,60 @@ function ModalUsuario({ usuario, onClose, onSaved, defaultCompanyId, isSuperAdmi
     e.preventDefault()
     setLoading(true)
 
-    if (editing) {
-      const update = { nome, perfil, ativo }
-      if (isSuperAdmin) update.company_id = companyId || null
-      const { error } = await supabase.from('users').update(update).eq('id', usuario.id)
-      if (error) { toast.error('Erro ao atualizar usuário.'); setLoading(false); return }
+    try {
+      if (editing) {
+        const update = { nome, perfil, ativo }
+        if (isSuperAdmin) update.company_id = companyId || null
+        const { error } = await supabase.from('users').update(update).eq('id', usuario.id)
+        if (error) { toast.error('Erro ao atualizar usuário: ' + error.message); setLoading(false); return }
 
-      // Redefinir senha se informada
-      if (senha.trim()) {
+        if (senha.trim()) {
+          const { data: { session } } = await supabase.auth.getSession()
+          const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-password`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`,
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ user_id: usuario.id, new_password: senha.trim() }),
+          })
+          const result = await res.json().catch(() => ({}))
+          if (!res.ok) { toast.error('Senha não atualizada: ' + (result.error || res.statusText)); setLoading(false); return }
+        }
+
+        toast.success('Usuário atualizado!')
+      } else {
         const { data: { session } } = await supabase.auth.getSession()
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-password`, {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session?.access_token}`,
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
-          body: JSON.stringify({ user_id: usuario.id, new_password: senha.trim() }),
+          body: JSON.stringify({ email, password: senha, nome, perfil, ativo, company_id: companyId || null }),
         })
-        const result = await res.json()
-        if (!res.ok) { toast.error('Senha não atualizada: ' + (result.error || res.statusText)); setLoading(false); return }
+        const result = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          const msg = result.error || res.statusText || 'Erro desconhecido'
+          const friendly = msg.includes('already registered') || msg.includes('already been registered')
+            ? 'Este e-mail já está cadastrado no sistema.'
+            : msg
+          toast.error('Erro ao criar usuário: ' + friendly)
+          setLoading(false)
+          return
+        }
+        toast.success('Usuário criado!')
       }
 
-      toast.success('Usuário atualizado!')
-    } else {
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ email, password: senha, nome, perfil, ativo, company_id: companyId || null }),
-      })
-      const result = await res.json()
-      if (!res.ok) { toast.error('Erro ao criar usuário: ' + (result.error || res.statusText)); setLoading(false); return }
-      toast.success('Usuário criado!')
+      setLoading(false)
+      onSaved()
+      onClose()
+    } catch (err) {
+      toast.error('Erro inesperado: ' + err.message)
+      setLoading(false)
     }
-
-    setLoading(false)
-    onSaved()
-    onClose()
   }
 
   return (
