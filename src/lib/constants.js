@@ -14,6 +14,7 @@ export const ETAPA_INDEX = Object.fromEntries(ETAPAS.map((e, i) => [e.key, i]))
 export const ETAPA_LABEL = Object.fromEntries(ETAPAS.map((e) => [e.key, e.label]))
 
 export const PERFIL_LABEL = {
+  visualizador: 'Visualizador',
   operacional: 'Operacional',
   comercial: 'Comercial',
   financeiro: 'Financeiro',

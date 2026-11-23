@@ -84,7 +84,7 @@ function AppRoutes() {
       <Route
         path="/relatorio-financeiro"
         element={
-          <ProtectedRoute requiredPerfil={['financeiro', 'administrador', 'super_admin']}>
+          <ProtectedRoute requiredPerfil={['financeiro', 'administrador', 'super_admin', 'visualizador']}>
             <Layout><RelatorioFinanceiro /></Layout>
           </ProtectedRoute>
         }
