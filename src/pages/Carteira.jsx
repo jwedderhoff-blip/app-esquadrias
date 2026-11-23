@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ArrowTopRightOnSquareIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { ETAPAS } from '../lib/constants'
@@ -43,12 +43,60 @@ function PrazoCell({ prazo }) {
   )
 }
 
+const ETAPA_INDEX_MAP = Object.fromEntries(ETAPAS.map((e, i) => [e.key, i]))
+
+function getPendencias(projects, perfil) {
+  const enc = 'encerrado'
+  if (perfil === 'comercial') {
+    return projects
+      .filter((p) => p.etapa_atual !== enc && (!p.cliente || !p.titulo || p.valor_contrato == null))
+      .map((p) => {
+        const motivos = []
+        if (!p.titulo) motivos.push('sem título')
+        if (!p.cliente) motivos.push('sem cliente')
+        if (p.valor_contrato == null) motivos.push('sem valor do contrato')
+        return { ...p, motivo: motivos.join(' · ') }
+      })
+  }
+  if (perfil === 'financeiro') {
+    return projects
+      .filter((p) => p.etapa_atual !== enc && p.valor_contrato != null && p.totalPagamentos === 0)
+      .map((p) => ({ ...p, motivo: 'contrato sem lançamentos financeiros' }))
+  }
+  if (perfil === 'compras') {
+    return projects
+      .filter((p) => {
+        if (p.etapa_atual === enc || p.etapa_atual === 'pos_obra') return false
+        const idx = ETAPA_INDEX_MAP[p.etapa_atual] ?? -1
+        const contratoIdx = ETAPA_INDEX_MAP['contrato'] ?? 1
+        if (idx < contratoIdx) return false
+        const ci = p.comprasInfo
+        return !ci || ci.done === 0
+      })
+      .map((p) => ({ ...p, motivo: 'cotação/compra de materiais não iniciada' }))
+  }
+  if (perfil === 'administrador' || perfil === 'super_admin') {
+    const comercial = getPendencias(projects, 'comercial').map((p) => ({ ...p, _area: 'Comercial' }))
+    const financeiro = getPendencias(projects, 'financeiro').map((p) => ({ ...p, _area: 'Financeiro' }))
+    const compras = getPendencias(projects, 'compras').map((p) => ({ ...p, _area: 'Compras' }))
+    const seen = new Set()
+    const result = []
+    for (const p of [...comercial, ...financeiro, ...compras]) {
+      const key = `${p.id}:${p._area}`
+      if (!seen.has(key)) { seen.add(key); result.push(p) }
+    }
+    return result
+  }
+  return []
+}
+
 export default function Carteira() {
   const { profile, effectiveCompanyId } = useAuth()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterEtapa, setFilterEtapa] = useState('')
+  const [pendenciasAberto, setPendenciasAberto] = useState(true)
   const companyId = effectiveCompanyId()
   const canCreate = ['comercial', 'financeiro', 'administrador', 'super_admin'].includes(profile?.perfil)
 
@@ -80,7 +128,7 @@ export default function Carteira() {
           .eq('etapa', 'pedido'),
         supabase
           .from('pagamentos')
-          .select('project_id, valor')
+          .select('project_id, valor, pago')
           .in('project_id', ids),
       ])
 
@@ -90,8 +138,20 @@ export default function Carteira() {
       }
 
       const pagMap = {}
+      const pagCountMap = {}
       for (const pg of pagamentosData || []) {
-        pagMap[pg.project_id] = (pagMap[pg.project_id] || 0) + Number(pg.valor)
+        pagMap[pg.project_id] = (pagMap[pg.project_id] || 0) + (pg.pago ? Number(pg.valor) : 0)
+        pagCountMap[pg.project_id] = (pagCountMap[pg.project_id] || 0) + 1
+      }
+
+      // checklist de compra_material: quantos itens concluídos por projeto
+      const comprasDoneMap = {}
+      for (const item of (checklistItems || [])) {
+        if (item.etapa === 'compra_material') {
+          if (!comprasDoneMap[item.project_id]) comprasDoneMap[item.project_id] = { total: 0, done: 0 }
+          comprasDoneMap[item.project_id].total++
+          if (item.concluido) comprasDoneMap[item.project_id].done++
+        }
       }
 
       const enriched = (projectsData || []).map((p) => {
@@ -108,7 +168,9 @@ export default function Carteira() {
         const pipelinePct = Math.min(100, Math.round(((Math.max(stageIdx, 0) + partial) / ETAPAS.length) * 100))
 
         const totalRecebido = pagMap[p.id] || 0
+        const totalPagamentos = pagCountMap[p.id] || 0
         const saldoPendente = p.valor_contrato != null ? Math.max(0, Number(p.valor_contrato) - totalRecebido) : null
+        const comprasInfo = comprasDoneMap[p.id] || null
 
         return {
           ...p,
@@ -118,6 +180,8 @@ export default function Carteira() {
           etapaPct,
           prazo: prazoMap[p.id] ?? null,
           saldoPendente,
+          totalPagamentos,
+          comprasInfo,
         }
       })
 
@@ -144,8 +208,66 @@ export default function Carteira() {
       return (parseInt(b.numero_pedido) || 0) - (parseInt(a.numero_pedido) || 0)
     })
 
+  const perfil = profile?.perfil
+  const pendencias = !loading && ['comercial', 'financeiro', 'compras', 'administrador', 'super_admin'].includes(perfil)
+    ? getPendencias(projects, perfil)
+    : []
+
   return (
     <div>
+      {/* Card de pendências por função */}
+      {pendencias.length > 0 && (
+        <div className="mb-6 bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/50 rounded-xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setPendenciasAberto((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <ExclamationTriangleIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                Suas pendências — {pendencias.length} projeto{pendencias.length !== 1 ? 's' : ''} aguardando ação
+              </span>
+            </div>
+            {pendenciasAberto
+              ? <ChevronUpIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              : <ChevronDownIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            }
+          </button>
+          {pendenciasAberto && (
+            <div className="border-t border-amber-200 dark:border-amber-800/40 divide-y divide-amber-100 dark:divide-amber-800/30">
+              {pendencias.map((p) => (
+                <Link
+                  key={`${p.id}:${p._area || perfil}`}
+                  to={`/projetos/${p.id}`}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {p.numero_pedido && (
+                        <span className="text-[11px] font-mono font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded flex-shrink-0">
+                          {p.numero_pedido}
+                        </span>
+                      )}
+                      {p._area && (
+                        <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded flex-shrink-0">
+                          {p._area}
+                        </span>
+                      )}
+                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                        {p.titulo || p.cliente || 'Sem título'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">{p.motivo}</p>
+                  </div>
+                  <EtapaBadge etapa={p.etapa_atual} />
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Projetos</h1>

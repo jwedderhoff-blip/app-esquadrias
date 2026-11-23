@@ -17,6 +17,7 @@ export const PERFIL_LABEL = {
   operacional: 'Operacional',
   comercial: 'Comercial',
   financeiro: 'Financeiro',
+  compras: 'Compras',
   administrador: 'Administrador',
   super_admin: 'Super Admin',
 }
