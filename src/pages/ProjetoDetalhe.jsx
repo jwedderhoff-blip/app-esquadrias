@@ -730,7 +730,7 @@ export default function ProjetoDetalhe() {
               )
             })()}
             <div className="flex items-center gap-2">
-              {(canEdit || canDelete) && (
+              {(canEditComercial || canDelete) && (
                 <div className="relative">
                   <button
                     onClick={() => setActionMenu((v) => !v)}
