@@ -1327,7 +1327,7 @@ const PEDIDO_DESCS = [
 ]
 
 // ── Componente principal ──────────────────────────────────────
-export default function ChecklistTab({ projectId, etapa, items, onUpdate, project }) {
+export default function ChecklistTab({ projectId, etapa, items, onUpdate, project, canEdit = true }) {
   const { session } = useAuth()
   const [updating, setUpdating] = useState(null)
   const [anexoModal, setAnexoModal] = useState(null)
@@ -1436,6 +1436,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
   }, [items])
 
   function handleClick(item) {
+    if (!canEdit) return
     if (item.descricao === 'Orçamentos realizados') {
       setOrcamentosModal(item); return
     }
@@ -1557,8 +1558,8 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                 }`}>
                   <div className="flex items-center gap-3 p-4">
                     <button
-                      onClick={() => setContratoModal(true)}
-                      className="flex-shrink-0 transition-colors"
+                      onClick={() => canEdit && setContratoModal(true)}
+                      className={`flex-shrink-0 transition-colors ${!canEdit ? 'cursor-default' : ''}`}
                     >
                       {contratoAllDone
                         ? <CheckCircleSolid className="w-6 h-6 text-green-500 dark:text-green-400" />
@@ -1577,7 +1578,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                         <PaperClipIcon className="w-3 h-3" />
                         {contratoAllDone ? 'Registrado' : contratoPartial ? 'Incompleto' : 'Requer dados'}
                       </span>
-                      {(contratoAllDone || contratoPartial) && (
+                      {(contratoAllDone || contratoPartial) && canEdit && (
                         <button
                           onClick={() => setContratoModal(true)}
                           title="Editar"
@@ -1656,7 +1657,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                       : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
                 }`}>
                   <div className="flex items-center gap-3 p-4">
-                    <button onClick={() => setPedidoModal(true)} className="flex-shrink-0 transition-colors">
+                    <button onClick={() => canEdit && setPedidoModal(true)} className={`flex-shrink-0 transition-colors ${!canEdit ? 'cursor-default' : ''}`}>
                       {pedidoAllDone
                         ? <CheckCircleSolid className="w-6 h-6 text-green-500 dark:text-green-400" />
                         : <CheckCircleIcon className="w-6 h-6 text-gray-300 dark:text-gray-600 hover:text-blue-500" />
@@ -1751,8 +1752,8 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                 <div className="flex items-center gap-3 p-4">
                   <button
                     onClick={() => handleClick(item)}
-                    disabled={updating === item.id}
-                    className="flex-shrink-0 transition-colors disabled:opacity-50"
+                    disabled={updating === item.id || !canEdit}
+                    className={`flex-shrink-0 transition-colors disabled:opacity-50 ${!canEdit ? 'cursor-default' : ''}`}
                   >
                     {item.concluido
                       ? <CheckCircleSolid className="w-6 h-6 text-green-500 dark:text-green-400" />
@@ -1785,7 +1786,7 @@ export default function ChecklistTab({ projectId, etapa, items, onUpdate, projec
                         {item.concluido ? '✓ Preenchido' : 'Requer dados'}
                       </span>
                     )}
-                    {item.concluido && (hasFields || item.requer_documento || item.descricao === 'Material recebido e conferido') && (
+                    {item.concluido && canEdit && (hasFields || item.requer_documento || item.descricao === 'Material recebido e conferido') && (
                       <button
                         onClick={() => openEdit(item)}
                         title="Editar"

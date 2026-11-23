@@ -229,8 +229,12 @@ export default function ProjetoDetalhe() {
     try { return localStorage.getItem('financeiro_aberto') !== 'false' } catch { return true }
   })
 
-  const canEdit = ['administrador', 'comercial', 'financeiro', 'compras', 'super_admin'].includes(profile?.perfil)
-  const canDelete = ['administrador', 'super_admin'].includes(profile?.perfil)
+  const _perfil = profile?.perfil
+  const canEditComercial = ['administrador', 'comercial', 'super_admin'].includes(_perfil)
+  const canEditFinanceiro = ['administrador', 'financeiro', 'super_admin'].includes(_perfil)
+  const canEditCompras = ['administrador', 'compras', 'super_admin'].includes(_perfil)
+  const canEdit = canEditComercial || canEditFinanceiro || canEditCompras
+  const canDelete = ['administrador', 'super_admin'].includes(_perfil)
 
   async function fetchProject() {
     const { data } = await supabase
@@ -740,7 +744,7 @@ export default function ProjetoDetalhe() {
                       {/* backdrop para fechar ao clicar fora */}
                       <div className="fixed inset-0 z-10" onClick={() => setActionMenu(false)} />
                       <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 min-w-[140px]">
-                        {canEdit && (
+                        {canEditComercial && (
                           <button
                             onClick={() => { setActionMenu(false); setEditModal(true) }}
                             className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
@@ -838,7 +842,7 @@ export default function ProjetoDetalhe() {
                 )}
               </div>
               <div className="flex items-center gap-3">
-                {canEdit && financeiroAberto && (
+                {canEditFinanceiro && financeiroAberto && (
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -889,7 +893,7 @@ export default function ProjetoDetalhe() {
                   <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {project.valor_contrato != null ? fmtBRL(Number(project.valor_contrato)) : <span className="text-gray-400 font-normal">Não informado</span>}
                   </span>
-                  {canEdit && (
+                  {canEditFinanceiro && (
                     <button onClick={() => { setValorInput(project.valor_contrato != null ? String(project.valor_contrato).replace('.', ',') : ''); setEditandoValor(true) }}
                       className="text-gray-400 hover:text-blue-500 transition-colors">
                       <PencilSquareIcon className="w-3.5 h-3.5" />
@@ -922,7 +926,7 @@ export default function ProjetoDetalhe() {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className={`text-xs font-semibold ${isPago ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>{fmtBRL(Number(pag.valor))}</span>
-                          {canEdit && !isPago && (
+                          {canEditFinanceiro && !isPago && (
                             <button
                               onClick={() => { setModalBaixa(pag); setFormBaixa({ data_pagamento: new Date().toISOString().split('T')[0], forma_recebimento: pag.forma_recebimento || '' }) }}
                               title="Dar baixa"
@@ -931,7 +935,7 @@ export default function ProjetoDetalhe() {
                               Dar baixa
                             </button>
                           )}
-                          {canEdit && (
+                          {canEditFinanceiro && (
                             <button onClick={() => abrirEditarPagamento(pag)} title="Editar lançamento"
                               className="p-0.5 text-gray-400 hover:text-blue-500 transition-colors">
                               <PencilSquareIcon className="w-3.5 h-3.5" />
@@ -1343,6 +1347,7 @@ export default function ProjetoDetalhe() {
           onUpdate={() => { fetchChecklist(); loadAllStageStats() }}
           project={project}
           isCurrentEtapa={(selectedEtapa ?? project.etapa_atual) === project.etapa_atual}
+          canEdit={canEditComercial || canEditCompras}
         />
       )}
       {tab === 'relatorio' && <RelatorioTab projectId={id} project={project} />}
