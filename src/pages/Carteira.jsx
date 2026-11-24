@@ -96,7 +96,7 @@ export default function Carteira() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterEtapa, setFilterEtapa] = useState('')
-  const [pendenciasAberto, setPendenciasAberto] = useState(true)
+  const [pendenciasAberto, setPendenciasAberto] = useState(false)
   const companyId = effectiveCompanyId()
   const canCreate = ['comercial', 'financeiro', 'administrador', 'super_admin'].includes(profile?.perfil)
 
