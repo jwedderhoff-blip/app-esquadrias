@@ -318,22 +318,23 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
 
   async function handleSave() {
     if (orcamentos.length === 0) { toast.error('Registre ao menos um orçamento.'); return }
-    const aprovados = orcamentos.filter((o) => o.aprovado)
-    if (aprovados.length === 0) { toast.error('Aprove ao menos um orçamento antes de confirmar.'); return }
     setSaving(true)
-    const compras = aprovados.map((o) => ({
+    const aprovadosList = orcamentos.filter((o) => o.aprovado)
+    const temAprovado = aprovadosList.length > 0
+    const compras = aprovadosList.map((o) => ({
       id: o.id, fornecedor: o.fornecedor, referencia_orcamento: o.material,
       valor: o.valor, data_entrega: o.data_entrega, tipo_compra: o.tipo_compra,
       percentual_compra: o.percentual_compra, obs_compra: o.obs_compra,
     }))
-    const { error } = await supabase.from('checklist_items').update({
+    const update = {
       dados: { orcamentos, compras },
-      concluido: true,
-      concluido_por: session.user.id,
-      concluido_em: new Date().toISOString(),
-    }).eq('id', item.id)
+      concluido: temAprovado,
+      concluido_por: temAprovado ? session.user.id : null,
+      concluido_em: temAprovado ? new Date().toISOString() : null,
+    }
+    const { error } = await supabase.from('checklist_items').update(update).eq('id', item.id)
     if (error) { toast.error('Erro: ' + error.message); setSaving(false); return }
-    toast.success('Orçamentos registrados!')
+    toast.success(temAprovado ? 'Orçamentos registrados!' : 'Orçamentos salvos — aprove um para concluir.')
     onDone(); onClose()
   }
 
@@ -610,7 +611,7 @@ function ModalOrcamentos({ item, projectId, etapa, project, onClose, onDone }) {
             className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
             Cancelar
           </button>
-          <button type="button" onClick={handleSave} disabled={saving || aprovados === 0}
+          <button type="button" onClick={handleSave} disabled={saving}
             className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition">
             {saving ? 'Salvando...' : `Confirmar${aprovados > 0 ? ` (${aprovados} aprovado${aprovados > 1 ? 's' : ''})` : ''}`}
           </button>
