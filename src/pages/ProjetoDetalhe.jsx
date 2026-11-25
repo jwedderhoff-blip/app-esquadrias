@@ -868,7 +868,7 @@ export default function ProjetoDetalhe() {
               <div className="flex gap-1.5 min-w-max pb-1 items-center">
                 {ETAPAS_SIMPLES.map(etapaBtn)}
                 {grupoBtn('Produção', 'producao', PRODUCAO_KEYS)}
-                {grupoBtn('Pós-venda', 'posvenda', POSVENDA_KEYS)}
+                {grupoBtn('Finalização obra', 'posvenda', POSVENDA_KEYS)}
               </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
                 Etapa atual: <strong>{ETAPAS[currentIdx]?.label}</strong> — toque em qualquer etapa para ver ou preencher
