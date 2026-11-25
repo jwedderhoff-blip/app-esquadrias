@@ -210,6 +210,7 @@ export default function ProjetoDetalhe() {
   const [pagamentos, setPagamentos] = useState([])
   const [editandoValor, setEditandoValor] = useState(false)
   const [valorInput, setValorInput] = useState('')
+  const [valorChecklist, setValorChecklist] = useState(null)
   const [modalPagamento, setModalPagamento] = useState(false)
   const [formPagamento, setFormPagamento] = useState({ descricao: '', valor: '', data_pagamento: '', forma_recebimento: '', destino: '' })
   const [comprovanteFile, setComprovanteFile] = useState(null)
@@ -310,7 +311,6 @@ export default function ProjetoDetalhe() {
   }
 
   async function syncValorContrato(projectData) {
-    if (projectData?.valor_contrato != null) return
     const { data } = await supabase
       .from('checklist_items')
       .select('dados')
@@ -323,8 +323,19 @@ export default function ProjetoDetalhe() {
     if (!raw) return
     const valor = parseFloat(String(raw).replace(',', '.'))
     if (isNaN(valor) || valor <= 0) return
-    await supabase.from('projects').update({ valor_contrato: valor }).eq('id', id)
-    setProject((p) => ({ ...p, valor_contrato: valor }))
+    setValorChecklist(valor)
+    if (projectData?.valor_contrato == null) {
+      await supabase.from('projects').update({ valor_contrato: valor }).eq('id', id)
+      setProject((p) => ({ ...p, valor_contrato: valor }))
+    }
+  }
+
+  async function sincronizarComChecklist() {
+    if (valorChecklist == null) return
+    const { error } = await supabase.from('projects').update({ valor_contrato: valorChecklist }).eq('id', id)
+    if (error) { toast.error('Erro ao sincronizar'); return }
+    setProject((p) => ({ ...p, valor_contrato: valorChecklist }))
+    toast.success('Valor sincronizado com o contrato')
   }
 
   async function salvarValorContrato() {
@@ -872,7 +883,7 @@ export default function ProjetoDetalhe() {
             {financeiroAberto && <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-800 pt-4">
 
             {/* Valor do contrato */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-1">
               <span className="text-xs text-gray-500 dark:text-gray-400 w-32 flex-shrink-0">Valor do contrato</span>
               {editandoValor ? (
                 <div className="flex items-center gap-2">
@@ -902,6 +913,22 @@ export default function ProjetoDetalhe() {
                 </div>
               )}
             </div>
+            {/* Alerta de divergência com o contrato assinado */}
+            {valorChecklist != null && project.valor_contrato != null &&
+              Math.abs(valorChecklist - Number(project.valor_contrato)) > 0.01 && (
+              <div className="mb-3 ml-[8.5rem] flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 px-3 py-1.5">
+                <span className="text-amber-600 dark:text-amber-400 text-xs font-medium">
+                  Divergência: contrato assinado registra {fmtBRL(valorChecklist)}
+                </span>
+                {canEditFinanceiro && (
+                  <button onClick={sincronizarComChecklist}
+                    className="text-xs text-amber-700 dark:text-amber-300 font-semibold underline hover:no-underline flex-shrink-0">
+                    Sincronizar
+                  </button>
+                )}
+              </div>
+            )}
+            {!editandoValor && <div className="mb-3" />}
 
             {/* Lista de pagamentos */}
             {pagamentos.length > 0 && (
