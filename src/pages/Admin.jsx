@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { PlusIcon, PencilSquareIcon, BuildingOffice2Icon, XMarkIcon, LinkIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilSquareIcon, BuildingOffice2Icon, XMarkIcon, LinkIcon, ClipboardDocumentIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { PERFIL_LABEL } from '../lib/constants'
 import Spinner from '../components/ui/Spinner'
@@ -305,11 +305,196 @@ function ModalAdminEmpresa({ empresa, onClose, onSaved }) {
   )
 }
 
+function ModalMigrarProjeto({ companies, onClose }) {
+  const [sourceId, setSourceId] = useState('')
+  const [destId, setDestId] = useState('')
+  const [projects, setProjects] = useState([])
+  const [loadingProjects, setLoadingProjects] = useState(false)
+  const [selected, setSelected] = useState([])
+  const [step, setStep] = useState(1) // 1=origem, 2=projetos, 3=confirmar
+  const [migrating, setMigrating] = useState(false)
+
+  async function loadProjects(companyId) {
+    setLoadingProjects(true)
+    setSelected([])
+    const { data } = await supabase
+      .from('projects')
+      .select('id, titulo, cliente, numero_pedido, etapa_atual')
+      .eq('company_id', companyId)
+      .order('numero_pedido', { ascending: false })
+    setProjects(data || [])
+    setLoadingProjects(false)
+  }
+
+  function handleSourceChange(id) {
+    setSourceId(id)
+    setDestId('')
+    setSelected([])
+    setProjects([])
+    if (id) loadProjects(id)
+  }
+
+  function toggleSelect(id) {
+    setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+  }
+
+  function toggleAll() {
+    setSelected(selected.length === projects.length ? [] : projects.map((p) => p.id))
+  }
+
+  async function handleMigrate() {
+    if (!selected.length || !destId) return
+    setMigrating(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/migrate-project`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ project_ids: selected, dest_company_id: destId }),
+      })
+      const result = await res.json().catch(() => ({}))
+      if (!res.ok) { toast.error('Erro: ' + (result.error || res.statusText)); setMigrating(false); return }
+      toast.success(`${result.migrated} projeto(s) migrado(s) para ${result.dest_company}!`)
+      onClose()
+    } catch (e) {
+      toast.error('Erro inesperado: ' + e.message)
+    }
+    setMigrating(false)
+  }
+
+  const sourceCompany = companies.find((c) => c.id === sourceId)
+  const destCompany = companies.find((c) => c.id === destId)
+  const selectedProjects = projects.filter((p) => selected.includes(p.id))
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Migrar projetos</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Mova projetos de uma empresa para outra</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+
+          {/* Empresa origem */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Empresa de origem *</label>
+            <select value={sourceId} onChange={(e) => handleSourceChange(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Selecione...</option>
+              {companies.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          </div>
+
+          {/* Projetos da empresa origem */}
+          {sourceId && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Projetos {projects.length > 0 && `(${selected.length}/${projects.length} selecionados)`}
+                </label>
+                {projects.length > 0 && (
+                  <button onClick={toggleAll} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                    {selected.length === projects.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                  </button>
+                )}
+              </div>
+              {loadingProjects ? (
+                <div className="flex justify-center py-6"><Spinner /></div>
+              ) : projects.length === 0 ? (
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Nenhum projeto encontrado.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                  {projects.map((p) => (
+                    <label key={p.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selected.includes(p.id)
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'
+                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-700'
+                    }`}>
+                      <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleSelect(p.id)}
+                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {p.numero_pedido && <span className="text-xs font-mono text-blue-600 dark:text-blue-400">#{p.numero_pedido}</span>}
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{p.titulo || 'Sem título'}</span>
+                        </div>
+                        {p.cliente && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{p.cliente}</p>}
+                      </div>
+                      <span className="text-xs text-gray-400 flex-shrink-0">{p.etapa_atual?.replace(/_/g, ' ')}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Empresa destino */}
+          {sourceId && selected.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Empresa de destino *</label>
+              <select value={destId} onChange={(e) => setDestId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Selecione...</option>
+                {companies.filter((c) => c.id !== sourceId).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Preview da migração */}
+          {sourceId && destId && selected.length > 0 && (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/15 p-4">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-3">Resumo da migração</p>
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600">{sourceCompany?.nome}</span>
+                <ArrowRightIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-700">{destCompany?.nome}</span>
+              </div>
+              <ul className="space-y-0.5">
+                {selectedProjects.map((p) => (
+                  <li key={p.id} className="text-xs text-amber-700 dark:text-amber-400">
+                    {p.numero_pedido ? `#${p.numero_pedido} · ` : ''}{p.titulo || 'Sem título'}{p.cliente ? ` — ${p.cliente}` : ''}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-amber-600 dark:text-amber-500 mt-3">
+                ⚠ Esta ação é reversível, mas deve ser feita com cuidado. Os usuários da empresa origem perderão acesso imediatamente.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 p-6 border-t border-gray-100 dark:border-gray-700">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            Cancelar
+          </button>
+          <button
+            onClick={handleMigrate}
+            disabled={migrating || !selected.length || !destId}
+            className="flex-1 py-2.5 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 disabled:opacity-50 transition">
+            {migrating ? 'Migrando...' : `Migrar ${selected.length > 0 ? `(${selected.length})` : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Admin() {
   const [companies, setCompanies] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
   const [adminModal, setAdminModal] = useState(null)
+  const [migrarModal, setMigrarModal] = useState(false)
 
   async function fetchCompanies() {
     const { data } = await supabase
@@ -331,13 +516,22 @@ export default function Admin() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Empresas</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{companies.length} empresa{companies.length !== 1 ? 's' : ''} cadastrada{companies.length !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => setModal({})}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Nova empresa
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMigrarModal(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-sm font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/30 transition"
+          >
+            <ArrowRightIcon className="w-4 h-4" />
+            Migrar projetos
+          </button>
+          <button
+            onClick={() => setModal({})}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Nova empresa
+          </button>
+        </div>
       </div>
 
       {companies.length === 0 ? (
@@ -426,6 +620,13 @@ export default function Admin() {
           empresa={adminModal}
           onClose={() => setAdminModal(null)}
           onSaved={fetchCompanies}
+        />
+      )}
+
+      {migrarModal && (
+        <ModalMigrarProjeto
+          companies={companies}
+          onClose={() => { setMigrarModal(false); fetchCompanies() }}
         />
       )}
     </div>
