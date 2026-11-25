@@ -226,6 +226,7 @@ export default function ProjetoDetalhe() {
   const [formBaixa, setFormBaixa] = useState({ data_pagamento: '', forma_recebimento: '' })
   const [savingBaixa, setSavingBaixa] = useState(false)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [gruposAbertos, setGruposAbertos] = useState({ producao: false, posvenda: false })
   const [financeiroAberto, setFinanceiroAberto] = useState(() => {
     try { return localStorage.getItem('financeiro_aberto') !== 'false' } catch { return true }
   })
@@ -512,6 +513,16 @@ export default function ProjetoDetalhe() {
     supabase.from('users').select('id, nome').eq('ativo', true).order('nome').then(({ data }) => setUsuarios(data || []))
   }, [id])
 
+  useEffect(() => {
+    if (!project?.etapa_atual) return
+    const producaoKeys = ['fabricacao', 'pronto_entrega', 'instalacao']
+    const posvendaKeys = ['pos_obra', 'encerrado']
+    setGruposAbertos({
+      producao: producaoKeys.includes(project.etapa_atual),
+      posvenda: posvendaKeys.includes(project.etapa_atual),
+    })
+  }, [project?.id])
+
   async function handleDelete() {
     setDeleting(true)
     const { data: { session: s } } = await supabase.auth.getSession()
@@ -792,44 +803,79 @@ export default function ProjetoDetalhe() {
         </div>
 
         {/* Seletor de etapas clicável */}
-        <div className="mt-5 overflow-x-auto">
-          <div className="flex gap-1.5 min-w-max pb-1">
-            {ETAPAS.map((etapa, i) => {
-              const stats = stageStats[etapa.key]
-              const isFullyDone = stats && stats.total > 0 && stats.done === stats.total
-              const isPartial = stats && stats.done > 0 && stats.done < stats.total
-              const active = etapa.key === project.etapa_atual
-              const selected = etapa.key === selectedEtapa
+        {(() => {
+          const PRODUCAO_KEYS = ['fabricacao', 'pronto_entrega', 'instalacao']
+          const POSVENDA_KEYS = ['pos_obra', 'encerrado']
+          const ETAPAS_SIMPLES = ETAPAS.filter((e) => !PRODUCAO_KEYS.includes(e.key) && !POSVENDA_KEYS.includes(e.key))
 
-              let cls = ''
-              if (selected) {
-                if (isFullyDone) cls = 'bg-green-600 text-white border-green-600'
-                else if (isPartial) cls = 'bg-amber-500 text-white border-amber-500'
-                else if (active) cls = 'bg-blue-600 text-white border-blue-600'
-                else cls = 'bg-gray-700 text-white border-gray-700'
-              } else {
-                if (isFullyDone) cls = 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30'
-                else if (isPartial) cls = 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30'
-                else if (active) cls = 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-                else cls = 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }
+          function etapaBtn(etapa) {
+            const stats = stageStats[etapa.key]
+            const isFullyDone = stats && stats.total > 0 && stats.done === stats.total
+            const isPartial = stats && stats.done > 0 && stats.done < stats.total
+            const active = etapa.key === project.etapa_atual
+            const selected = etapa.key === selectedEtapa
+            let cls = ''
+            if (selected) {
+              if (isFullyDone) cls = 'bg-green-600 text-white border-green-600'
+              else if (isPartial) cls = 'bg-amber-500 text-white border-amber-500'
+              else if (active) cls = 'bg-blue-600 text-white border-blue-600'
+              else cls = 'bg-gray-700 text-white border-gray-700'
+            } else {
+              if (isFullyDone) cls = 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30'
+              else if (isPartial) cls = 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+              else if (active) cls = 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+              else cls = 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }
+            const prefix = !selected && isFullyDone ? '✓ ' : !selected && isPartial ? '◐ ' : ''
+            return (
+              <button key={etapa.key} onClick={() => { setTab('etapas'); loadStageChecklist(etapa.key) }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border ${cls}`}>
+                {prefix}{etapa.label}
+              </button>
+            )
+          }
 
-              const prefix = !selected && isFullyDone ? '✓ ' : !selected && isPartial ? '◐ ' : ''
-              return (
-                <button
-                  key={etapa.key}
-                  onClick={() => { setTab('etapas'); loadStageChecklist(etapa.key) }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border ${cls}`}
-                >
-                  {prefix}{etapa.label}
+          function grupoBtn(nome, chave, keys) {
+            const etapasGrupo = ETAPAS.filter((e) => keys.includes(e.key))
+            const hasActive = keys.includes(project.etapa_atual)
+            const hasSelected = keys.includes(selectedEtapa)
+            const allDoneGrupo = etapasGrupo.every((e) => { const s = stageStats[e.key]; return s && s.total > 0 && s.done === s.total })
+            const anyDoneGrupo = etapasGrupo.some((e) => { const s = stageStats[e.key]; return s && s.done > 0 })
+            const aberto = gruposAbertos[chave]
+            let cls = ''
+            if (hasSelected && aberto) cls = 'bg-blue-600 text-white border-blue-600'
+            else if (allDoneGrupo) cls = 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+            else if (anyDoneGrupo || hasActive) cls = 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+            else cls = 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+            const prefix = !aberto && allDoneGrupo ? '✓ ' : !aberto && anyDoneGrupo ? '◐ ' : ''
+            return (
+              <div key={chave} className="flex items-center gap-1">
+                <button onClick={() => setGruposAbertos((g) => ({ ...g, [chave]: !g[chave] }))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border ${cls}`}>
+                  {prefix}{nome} {aberto ? '▲' : '▼'}
                 </button>
-              )
-            })}
-          </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
-            Etapa atual: <strong>{ETAPAS[currentIdx]?.label}</strong> — toque em qualquer etapa para ver ou preencher
-          </p>
-        </div>
+                {aberto && (
+                  <div className="flex items-center gap-1 pl-1 border-l border-gray-200 dark:border-gray-700 ml-0.5">
+                    {etapasGrupo.map(etapaBtn)}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          return (
+            <div className="mt-5 overflow-x-auto">
+              <div className="flex gap-1.5 min-w-max pb-1 items-center">
+                {ETAPAS_SIMPLES.map(etapaBtn)}
+                {grupoBtn('Produção', 'producao', PRODUCAO_KEYS)}
+                {grupoBtn('Pós-venda', 'posvenda', POSVENDA_KEYS)}
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
+                Etapa atual: <strong>{ETAPAS[currentIdx]?.label}</strong> — toque em qualquer etapa para ver ou preencher
+              </p>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Card financeiro */}
